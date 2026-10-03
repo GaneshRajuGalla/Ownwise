@@ -14,6 +14,7 @@ struct EditItemView: View {
     @State private var category: ItemCategory = .appliance
     @State private var purchaseDate: Date = .now
     @State private var warrantyMonthsText = ""
+    @State private var didSave = false
 
     var body: some View {
         NavigationStack {
@@ -45,6 +46,9 @@ struct EditItemView: View {
     }
 
     func save() {
+        guard !didSave else { return }
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        didSave = true
         if let item {
             item.name = name; item.brand = brand; item.serialNumber = serial
             item.merchant = merchant; item.category = category; item.purchaseDate = purchaseDate

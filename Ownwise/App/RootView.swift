@@ -22,10 +22,5 @@ struct RootView: View {
             default: break
             }
         }
-        .overlay {
-            if scenePhase != .active {
-                Color.indigo.opacity(0.9).ignoresSafeArea()
-            }
-        }
     }
 }

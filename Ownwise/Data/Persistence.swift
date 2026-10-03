@@ -16,7 +16,7 @@ enum Persistence {
     static func seedSampleData(into context: ModelContext) {
         let tv = Item(name: "55\" OLED TV")
         tv.brand = "LG"; tv.category = .electronics; tv.merchant = "Best Buy"
-        tv.priceMinor = 9999900; tv.currencyCode = "USD"
+        tv.priceMinor = 129950; tv.currencyCode = "USD"
         tv.purchaseDate = Calendar.current.date(byAdding: .day, value: -60, to: .now) ?? .now
         tv.coverages = [Coverage(kind: .manufacturer, start: tv.purchaseDate, end: Calendar.current.date(byAdding: .year, value: 1, to: tv.purchaseDate) ?? .now)]
 

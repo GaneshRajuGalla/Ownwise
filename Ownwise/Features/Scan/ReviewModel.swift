@@ -43,7 +43,15 @@ final class ReviewModel {
     }
 
     func save(into context: ModelContext) {
-        let item = Item(name: name)
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Never save a filename-looking or empty name; fall back to merchant.
+        let finalName: String
+        if trimmedName.isEmpty || trimmedName.contains(".png") || trimmedName.contains(".jpg") || trimmedName.contains(".pdf") {
+            finalName = merchant.isEmpty ? "Scanned item" : merchant
+        } else {
+            finalName = trimmedName
+        }
+        let item = Item(name: finalName)
         item.merchant = merchant
         item.brand = brand
         item.modelNumber = modelNumber

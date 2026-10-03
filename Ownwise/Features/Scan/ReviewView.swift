@@ -4,6 +4,7 @@ import SwiftData
 struct ReviewView: View {
     @Environment(\.modelContext) private var modelContext
     @State var model: ReviewModel
+    @State private var didSave = false
     var onSaved: () -> Void
 
     var body: some View {
@@ -37,9 +38,12 @@ struct ReviewView: View {
             }
             Section {
                 Button("Save item") {
+                    guard !didSave else { return }
+                    didSave = true
                     model.save(into: modelContext)
                     onSaved()
                 }
+                .disabled(didSave)
                 .accessibilityIdentifier(AXID.reviewSaveButton)
             }
         }
