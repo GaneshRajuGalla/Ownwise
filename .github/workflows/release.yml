@@ -4,26 +4,32 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Marketing version (e.g. 1.0.0)
+        description: Marketing version (must match ASC version)
         required: true
-        default: 1.0.0
+        default: '1.0'
       build_number:
-        description: Build number
+        description: Build number (must be unique per version)
         required: true
         default: '1'
       submit_for_review:
-        description: Submit for review after upload
+        description: Submit to App Store review after upload
         required: false
-        default: 'false'
+        type: boolean
+        default: false
 
 jobs:
   release:
     runs-on: macos-26
+    env:
+      ASC_APP_ID: ${{ secrets.APP_STORE_APP_ID }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 26
-        run: sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer || true
+      - name: Select latest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort | tail -1)/Contents/Developer" && xcodebuild -version
+
+      - name: Install asc CLI
+        run: brew install asc && asc --version
 
       - name: Authenticate App Store Connect
         env:
@@ -33,23 +39,40 @@ jobs:
         run: |
           mkdir -p ~/.asc
           printf '%s' "$ASC_API_PRIVATE_KEY" > ~/.asc/AuthKey.p8
-          echo "ASC auth configured"
+          chmod 600 ~/.asc/AuthKey.p8
+          asc auth login --bypass-keychain --name ci \
+            --key-id "$ASC_API_KEY_ID" \
+            --issuer-id "$ASC_API_ISSUER_ID" \
+            --private-key ~/.asc/AuthKey.p8 \
+            --skip-validation
+          asc auth status
+
+      - name: Set version and build number
+        run: asc xcode version edit --version "${{ inputs.version }}" --build-number "${{ inputs.build_number }}"
 
       - name: Run unit tests
         run: |
           xcodebuild test \
+            -project Ownwise.xcodeproj \
             -scheme Ownwise \
             -destination 'platform=iOS Simulator,name=iPhone 18 Pro' \
-            -only-testing:OwnwiseTests \
-            -quiet
+            -only-testing:OwnwiseTests
 
-      - name: Archive
+      - name: Archive (App Store signing via API key)
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
         run: |
           xcodebuild archive \
+            -project Ownwise.xcodeproj \
             -scheme Ownwise \
             -configuration Release \
             -archivePath build/Ownwise.xcarchive \
-            -destination 'generic/platform=iOS'
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.asc/AuthKey.p8 \
+            -authenticationKeyID "$ASC_API_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_API_ISSUER_ID"
 
       - name: Export IPA
         run: |
@@ -57,12 +80,22 @@ jobs:
             -archivePath build/Ownwise.xcarchive \
             -exportPath build/ipa \
             -exportOptionsPlist ExportOptions.plist
+          ls -la build/ipa/
 
-      - name: Upload to TestFlight
+      - name: Upload to TestFlight (no submit)
+        if: ${{ !inputs.submit_for_review }}
         run: |
-          xcrun altool --upload-app \
-            -f build/ipa/Ownwise.ipa \
-            -t ios \
-            --apiKey "${{ secrets.ASC_API_KEY_ID }}" \
-            --apiIssuer "${{ secrets.ASC_API_ISSUER_ID }}" || \
-          xcrun notarytool submit build/ipa/Ownwise.ipa --help | head -5
+          asc publish testflight \
+            --app "$ASC_APP_ID" \
+            --ipa build/ipa/Ownwise.ipa \
+            --upload-only --wait --output json
+
+      - name: Upload + submit for App Store review
+        if: ${{ inputs.submit_for_review }}
+        run: |
+          asc publish appstore \
+            --app "$ASC_APP_ID" \
+            --ipa build/ipa/Ownwise.ipa \
+            --version "${{ inputs.version }}" \
+            --metadata-dir ./metadata \
+            --submit --confirm --output json
