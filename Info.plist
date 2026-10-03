@@ -6,18 +6,6 @@
 	<array>
 		<string>com.ownwise.Ownwise.refresh</string>
 	</array>
-	<key>CFBundleDisplayName</key>
-	<string>Ownwise</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>Scan receipts and warranty cards. Images stay on your iPhone.</string>
-	<key>NSFaceIDUsageDescription</key>
-	<string>Unlock Ownwise to protect your items.</string>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
