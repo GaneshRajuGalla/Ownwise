@@ -25,8 +25,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select latest Xcode
-        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort | tail -1)/Contents/Developer" && xcodebuild -version
+      - name: Select Xcode 27
+        run: |
+          PICK=$(ls -d /Applications/Xcode_27*.app /Applications/Xcode27*.app 2>/dev/null | sort | tail -1)
+          if [ -z "$PICK" ]; then echo "Xcode 27 not found:"; ls -d /Applications/Xcode*.app; exit 1; fi
+          sudo xcode-select -s "$PICK/Contents/Developer" && xcodebuild -version
+
+      - name: Resolve test simulator
+        id: sim
+        run: |
+          NAME=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d = json.load(sys.stdin)['devices']
+          names = []
+          for rt, devs in d.items():
+              if 'iOS' not in rt: continue
+              for x in devs:
+                  if x.get('isAvailable') and 'iPhone' in x['name']: names.append(x['name'])
+          for want in ['iPhone 18 Pro', 'iPhone 17 Pro', 'iPhone 17', 'iPhone 16 Pro']:
+              if want in names: print(want); break
+          else: print(names[0] if names else '')
+          ")
+          [ -z "$NAME" ] && { echo "no simulator"; exit 1; }
+          echo "device=$NAME" >> "$GITHUB_OUTPUT" && echo "Using: $NAME"
 
       - name: Install asc CLI
         run: brew install asc && asc --version
@@ -55,7 +76,7 @@ jobs:
           xcodebuild test \
             -project Ownwise.xcodeproj \
             -scheme Ownwise \
-            -destination 'platform=iOS Simulator,name=iPhone 18 Pro' \
+            -destination 'platform=iOS Simulator,name=${{ steps.sim.outputs.device }}' \
             -only-testing:OwnwiseTests
 
       - name: Archive (App Store signing via API key)
