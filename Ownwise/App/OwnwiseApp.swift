@@ -62,8 +62,10 @@ struct OwnwiseApp: App {
     }
 
     static func scheduleRefresh() async {
-        let request = BGAppRefreshTaskRequest(identifier: ReminderScheduler.taskID)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 3600 * 12)
-        try? await BGTaskScheduler.shared.submitTaskRequest(request)
+        if #available(iOS 27, *) {
+            let request = BGAppRefreshTaskRequest(identifier: ReminderScheduler.taskID)
+            request.earliestBeginDate = Date(timeIntervalSinceNow: 3600 * 12)
+            try? await BGTaskScheduler.shared.submitTaskRequest(request)
+        }
     }
 }

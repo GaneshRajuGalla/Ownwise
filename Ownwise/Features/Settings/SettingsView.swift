@@ -27,7 +27,7 @@ struct SettingsView: View {
                 }
                 Section("About") {
                     LabeledContent("Version", value: "1.0")
-                    Link("Rate Ownwise", destination: URL(string: "https://apps.apple.com")!)
+                    Link("Support website", destination: URL(string: "https://ganeshrajugalla.github.io/Ownwise/support.html")!)
                     Link("Contact support", destination: URL(string: "mailto:ganeshraju14014@gmail.com")!)
                 }
             }

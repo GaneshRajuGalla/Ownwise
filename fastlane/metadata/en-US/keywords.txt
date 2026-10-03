@@ -1,0 +1,1 @@
+receipt,warranty,return,guarantee,invoice,scanner,expiry,reminder,appliance,serial,claim,vault,proof

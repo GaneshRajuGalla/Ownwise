@@ -9,8 +9,8 @@ struct PrivacyView: View {
                 Label("Nothing is collected or shared.", systemImage: "hand.raised.fill")
             }
             Section(header: Text("Policy")) {
-                Link("Privacy policy", destination: URL(string: "mailto:ganeshraju14014@gmail.com")!)
-                Link("Support", destination: URL(string: "mailto:ganeshraju14014@gmail.com")!)
+                Link("Privacy policy", destination: URL(string: "https://ganeshrajugalla.github.io/Ownwise/privacy.html")!)
+                Link("Support", destination: URL(string: "https://ganeshrajugalla.github.io/Ownwise/support.html")!)
             }
         }
         .navigationTitle("Privacy")

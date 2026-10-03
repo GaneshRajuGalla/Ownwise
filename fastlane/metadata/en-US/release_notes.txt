@@ -1,0 +1,1 @@
+Initial release. Scan receipts, track warranties and return windows, get local reminders, export Claim Pack PDFs.

@@ -52,8 +52,8 @@ struct PaywallView: View {
 
     var legalLinks: some View {
         HStack {
-            Link("Terms", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/uk/terms.html")!)
-            Link("Privacy", destination: URL(string: "mailto:ganeshraju14014@gmail.com")!)
+            Link("Terms (EULA)", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
+            Link("Privacy", destination: URL(string: "https://ganeshrajugalla.github.io/Ownwise/privacy.html")!)
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
