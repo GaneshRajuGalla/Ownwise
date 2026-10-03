@@ -1,0 +1,31 @@
+{
+  "configurations" : [
+    {
+      "id" : "D0000000-0000-0000-0000-000000000001",
+      "name" : "Ownwise",
+      "options" : {},
+      "testables" : [
+        {
+          "blueprintName" : "OwnwiseTests",
+          "containerPath" : "container:Ownwise.xcodeproj",
+          "identifier" : "D1000000-0000-0000-0000-000000000001",
+          "selectedTests" : []
+        },
+        {
+          "blueprintName" : "OwnwiseUITests",
+          "containerPath" : "container:Ownwise.xcodeproj",
+          "identifier" : "D2000000-0000-0000-0000-000000000001",
+          "selectedTests" : []
+        }
+      ]
+    }
+  ],
+  "defaultOptions" : {
+    "environmentReplacingVariablesCount" : 0,
+    "environmentVariablesEntries" : [],
+    "testingEnvironment" : [],
+    "userTestingArguments" : []
+  },
+  "name" : "Ownwise",
+  "version" : 1
+}
