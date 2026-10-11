@@ -68,11 +68,12 @@ struct HomeView: View {
     }
 
     var needsAttention: some View {
+        // Only things the user can still act on; long-expired coverage isn't "attention".
         let flagged = items.filter { item in
             (item.coverages ?? []).contains { c in
                 switch coverageStatus(of: c, now: .now) {
-                case .expiringSoon, .expired, .serviceDue: true
-                case .active: false
+                case .expiringSoon, .serviceDue: true
+                case .active, .expired: false
                 }
             }
         }

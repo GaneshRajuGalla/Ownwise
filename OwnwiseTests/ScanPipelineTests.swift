@@ -12,7 +12,7 @@ struct ScanPipelineTests {
         draft.totalMinor = 129950
         draft.warrantyMonths = 12
 
-        var ai = ReceiptFields(
+        let ai = ReceiptFields(
             merchant: "AI Merchant",
             productName: "OLED TV",
             brand: "LG",

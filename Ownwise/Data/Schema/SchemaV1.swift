@@ -20,6 +20,8 @@ enum SchemaV1: VersionedSchema {
         var taxID: String = ""
         var supportPhone: String = ""
         var notes: String = ""
+        /// One-off reminder the user picked (Ownwise Pro).
+        var customReminderDate: Date? = nil
         var createdAt: Date = Date.now
         @Relationship(deleteRule: .cascade, inverse: \Coverage.item) var coverages: [Coverage]? = []
         @Relationship(deleteRule: .cascade, inverse: \Attachment.item) var attachments: [Attachment]? = []

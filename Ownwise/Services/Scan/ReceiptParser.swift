@@ -97,9 +97,7 @@ struct ReceiptParser: Sendable {
     }
 
     nonisolated func minorUnits(_ amount: Double, currencyCode: String) -> Int {
-        let zeroDecimal = ["JPY", "KRW", "VND", "ISK"]
-        let factor = zeroDecimal.contains(currencyCode.uppercased()) ? 1.0 : 100.0
-        return Int((amount * factor).rounded())
+        Money.minorUnits(amount, currencyCode: currencyCode)
     }
 
     // MARK: - Currency

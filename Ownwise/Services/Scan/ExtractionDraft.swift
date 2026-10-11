@@ -15,6 +15,8 @@ struct ExtractionDraft: Sendable {
     var returnDays: Int?
     var orderNumber: String = ""
     var ocrText: String = ""
+    /// Scanned pages as JPEG, saved as receipt attachments (used by Claim Pack).
+    var pageImages: [Data] = []
     var fieldsFromAI: Set<Field> = []
 
     enum Field: String, Sendable, Hashable {

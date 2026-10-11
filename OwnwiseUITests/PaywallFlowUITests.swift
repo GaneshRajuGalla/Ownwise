@@ -15,7 +15,12 @@ final class PaywallFlowUITests: XCTestCase {
         XCTAssertTrue(upgrade.waitForExistence(timeout: 5))
         upgrade.tap()
         XCTAssertTrue(app.buttons[AXID.paywallRestoreButton].waitForExistence(timeout: 5))
-        app.buttons["paywall_restore"].firstMatch.tap()
+        XCTAssertTrue(app.buttons[AXID.paywallPurchaseButton].exists)
+        app.buttons[AXID.paywallRestoreButton].firstMatch.tap()
+        // Free user: restore finds nothing and explains why.
+        let alert = app.alerts.firstMatch
+        if alert.waitForExistence(timeout: 10) { alert.buttons.firstMatch.tap() }
         app.buttons[AXID.paywallDismiss].tap()
+        XCTAssertFalse(app.buttons[AXID.paywallPurchaseButton].waitForExistence(timeout: 2))
     }
 }

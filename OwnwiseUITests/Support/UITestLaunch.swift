@@ -1,6 +1,7 @@
 import XCTest
 
 /// Launch configuration shared by all UI test classes.
+@MainActor
 enum UITestLaunch {
     static func makeApp(extraArgs: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
@@ -9,6 +10,7 @@ enum UITestLaunch {
     }
 }
 
+@MainActor
 extension XCUIElement {
     @discardableResult
     func waitAndTap(timeout: TimeInterval = 5) -> Bool {
@@ -39,8 +41,24 @@ enum AXID {
     static let searchField = "search_field"
     static let paywallRestoreButton = "paywall_restore"
     static let paywallDismiss = "paywall_dismiss"
+    static let paywallPurchaseButton = "paywall_purchase"
     static let exportClaimPackButton = "export_claim_pack"
     static let exportCSVButton = "export_csv"
+    static let settingsExportButton = "settings_export"
+    static let itemClaimPackButton = "item_claim_pack"
+    static let shareSheet = "share_sheet"
+    static let settingsRemindersButton = "settings_reminders"
+    static let reminderTimePicker = "reminder_time_picker"
+    static let itemCustomReminderButton = "item_custom_reminder"
+    static let saveCustomReminderButton = "save_custom_reminder"
+    static let addCustomReturnLeadButton = "add_custom_return_lead"
+    static let addCustomWarrantyLeadButton = "add_custom_warranty_lead"
+    static let customLeadDaysField = "custom_lead_days_field"
+    static let addAttachmentButton = "add_attachment_button"
+    static let coverageLengthField = "coverage_length_field"
+    static let addCoverageButton = "add_coverage_button"
+    static let saveCoverageButton = "save_coverage_button"
+    static let markServicedButton = "mark_serviced_button"
     static let editItemButton = "edit_item_button"
     static let cameraButton = "camera_button"
 }

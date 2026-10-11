@@ -63,3 +63,9 @@ fastlane/test_output
 
 # Store raw device screenshots (large, personal)
 Appstore Images/Raw/
+
+# Signing material (certificates, private keys, passwords) — never commit
+.asc/signing/
+*.p12
+*.p8
+*.mobileprovision

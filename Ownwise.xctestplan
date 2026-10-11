@@ -1,31 +1,31 @@
 {
   "configurations" : [
     {
-      "id" : "D0000000-0000-0000-0000-000000000001",
+      "id" : "8C1F3A52-6B0E-4C3D-9A21-5E7D0B4F2A11",
       "name" : "Ownwise",
-      "options" : {},
-      "testables" : [
-        {
-          "blueprintName" : "OwnwiseTests",
-          "containerPath" : "container:Ownwise.xcodeproj",
-          "identifier" : "D1000000-0000-0000-0000-000000000001",
-          "selectedTests" : []
-        },
-        {
-          "blueprintName" : "OwnwiseUITests",
-          "containerPath" : "container:Ownwise.xcodeproj",
-          "identifier" : "D2000000-0000-0000-0000-000000000001",
-          "selectedTests" : []
-        }
-      ]
+      "options" : {}
     }
   ],
   "defaultOptions" : {
-    "environmentReplacingVariablesCount" : 0,
-    "environmentVariablesEntries" : [],
-    "testingEnvironment" : [],
-    "userTestingArguments" : []
+    "storeKitConfigurationFileReference" : {
+      "identifier" : "OwnwiseTests/Ownwise.storekit"
+    }
   },
-  "name" : "Ownwise",
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Ownwise.xcodeproj",
+        "identifier" : "6ECA7B1E30712D20005A993E",
+        "name" : "OwnwiseTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Ownwise.xcodeproj",
+        "identifier" : "6ECA7B2830712D20005A993E",
+        "name" : "OwnwiseUITests"
+      }
+    }
+  ],
   "version" : 1
 }

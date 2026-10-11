@@ -4,30 +4,27 @@
   "products" : [
     {
       "displayName" : "Ownwise Pro",
+      "displayPrice" : "4.99",
       "familyShareable" : false,
       "internalID" : "10000001",
       "localizations" : [
         {
-          "description" : "Unlimited items, service plans, Claim Pack PDF, CSV export, app lock.",
+          "description" : "Unlimited items, service plans, Claim Pack PDF, CSV export.",
           "displayName" : "Ownwise Pro",
           "locale" : "en_US"
         }
       ],
       "productID" : "com.ownwise.Ownwise.pro",
       "referenceName" : "Ownwise Pro",
-      "type" : "NonConsumable",
-      "availableInAllTerritories" : true,
-      "price" : "4.99"
+      "type" : "NonConsumable"
     }
   ],
   "settings" : {
     "_compatibilityTimeRate" : "none",
-    "_locale" : "en_US",
-    "_ineligibleFlagsForCurrentDevice" : [
-
-    ],
     "_failTransactionsEnabled" : false,
+    "_ineligibleFlagsForCurrentDevice" : [],
     "_invalidatePurchasesEnabled" : false,
+    "_locale" : "en_US",
     "_localeCurrency" : "USD",
     "_storefront" : "USA",
     "_timeZone" : "America/Los_Angeles",

@@ -15,7 +15,8 @@ struct OwnwiseApp: App {
         container = c
 
         let force: Bool? = LaunchEnvironment.forcePro ? true : (LaunchEnvironment.forceFree ? false : nil)
-        _storeManager = State(initialValue: StoreManager(forcePro: force))
+        let s = StoreManager(forcePro: force)
+        _storeManager = State(initialValue: s)
         _appLock = State(initialValue: AppLock())
         let r = ReminderScheduler()
         _reminder = State(initialValue: r)
@@ -23,6 +24,9 @@ struct OwnwiseApp: App {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: ReminderScheduler.taskID, using: nil) { task in
             Task { @MainActor in
                 let items = (try? c.mainContext.fetch(FetchDescriptor<Item>())) ?? []
+                // Background launches may not render any view, so apply Pro preferences here too.
+                await s.refreshEntitlements()
+                r.configure(isPro: s.isPro)
                 await r.rescheduleAll(items: items)
                 task.setTaskCompleted(success: true)
                 await Self.scheduleRefresh()
@@ -50,11 +54,13 @@ struct OwnwiseApp: App {
                             Persistence.seedSampleData(into: ctx)
                         }
                     }
-                    await storeManager.startListening()
+                    await storeManager.start()
                     if LaunchEnvironment.isUITesting {
                         await reminder.grantPermissionForUITesting()
                     } else {
-                        await reminder.requestPermissionIfNeeded()
+                        // The permission prompt itself is shown from onboarding, never over it.
+                        await reminder.refreshAuthorizationStatus()
+                        await Self.scheduleRefresh()
                     }
                 }
         }
@@ -62,10 +68,8 @@ struct OwnwiseApp: App {
     }
 
     static func scheduleRefresh() async {
-        if #available(iOS 27, *) {
-            let request = BGAppRefreshTaskRequest(identifier: ReminderScheduler.taskID)
-            request.earliestBeginDate = Date(timeIntervalSinceNow: 3600 * 12)
-            try? await BGTaskScheduler.shared.submitTaskRequest(request)
-        }
+        let request = BGAppRefreshTaskRequest(identifier: ReminderScheduler.taskID)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 3600 * 12)
+        try? BGTaskScheduler.shared.submit(request)
     }
 }

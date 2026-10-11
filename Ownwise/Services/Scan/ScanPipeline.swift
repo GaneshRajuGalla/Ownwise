@@ -53,7 +53,7 @@ struct ScanPipeline: Sendable {
             }
         }
         if draft.totalMinor == nil, ai.total > 0 {
-            draft.totalMinor = Int((ai.total * 100).rounded())
+            draft.totalMinor = Money.minorUnits(ai.total, currencyCode: draft.currencyCode.isEmpty ? ai.currencyCode : draft.currencyCode)
             draft.fieldsFromAI.insert(.total)
         }
         if draft.currencyCode.isEmpty, !ai.currencyCode.isEmpty { draft.currencyCode = ai.currencyCode; draft.fieldsFromAI.insert(.currency) }

@@ -29,6 +29,7 @@ enum Persistence {
         washer.brand = "Samsung"; washer.category = .appliance
         let svc = Coverage(kind: .servicePlan, start: washer.purchaseDate, end: .distantFuture)
         svc.serviceIntervalMonths = 3
+        svc.lastServiceDate = Calendar.current.date(byAdding: .month, value: -4, to: .now)
         washer.coverages = [svc]
 
         for item in [tv, laptop, washer] { context.insert(item) }

@@ -20,8 +20,7 @@ final class ReviewModel {
     var orderNumber: String = ""
     var fieldsFromAI: Set<ExtractionDraft.Field> = []
     var ocrText: String = ""
-    var attachmentData: Data?
-    var attachmentType: String = "public.jpeg"
+    var pageImages: [Data] = []
 
     init(draft: ExtractionDraft) {
         name = draft.name
@@ -31,15 +30,16 @@ final class ReviewModel {
         serialNumber = draft.serialNumber
         category = draft.category
         purchaseDate = draft.purchaseDate ?? .now
-        if let t = draft.totalMinor {
-            totalText = String(format: "%.2f", Double(t) / 100)
-        }
         currencyCode = draft.currencyCode
+        if let t = draft.totalMinor {
+            totalText = Money.plainString(t, currencyCode: draft.currencyCode)
+        }
         if let w = draft.warrantyMonths { warrantyMonthsText = String(w) }
         if let r = draft.returnDays { returnDaysText = String(r) }
         orderNumber = draft.orderNumber
         fieldsFromAI = draft.fieldsFromAI
         ocrText = draft.ocrText
+        pageImages = draft.pageImages
     }
 
     func save(into context: ModelContext) {
@@ -58,9 +58,9 @@ final class ReviewModel {
         item.serialNumber = serialNumber
         item.category = category
         item.purchaseDate = purchaseDate
-        item.currencyCode = currencyCode.isEmpty ? (Locale.current.currency?.identifier ?? "USD") : currencyCode
-        if let total = Double(totalText.replacingOccurrences(of: ",", with: ".")) {
-            item.priceMinor = Int((total * 100).rounded())
+        item.currencyCode = currencyCode.isEmpty ? (Locale.current.currency?.identifier ?? "USD") : currencyCode.uppercased()
+        if let total = Double(totalText.replacingOccurrences(of: ",", with: ".")), total >= 0 {
+            item.priceMinor = Money.minorUnits(total, currencyCode: item.currencyCode)
         }
         item.orderNumber = orderNumber
         var coverages: [Coverage] = []
@@ -71,8 +71,10 @@ final class ReviewModel {
             coverages.append(Coverage(kind: .manufacturer, start: purchaseDate, end: Calendar.current.date(byAdding: .month, value: w, to: purchaseDate) ?? purchaseDate))
         }
         item.coverages = coverages
-        if let data = attachmentData {
-            item.attachments = [Attachment(kind: .receipt, data: data, contentType: attachmentType)]
+        item.attachments = pageImages.map { data in
+            let attachment = Attachment(kind: .receipt, data: data, contentType: "public.jpeg")
+            attachment.ocrText = ocrText
+            return attachment
         }
         context.insert(item)
         try? context.save()

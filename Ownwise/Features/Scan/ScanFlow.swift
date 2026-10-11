@@ -2,9 +2,13 @@ import SwiftUI
 import PhotosUI
 import PDFKit
 import UniformTypeIdentifiers
+import SwiftData
 
 struct ScanFlow: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(StoreManager.self) private var store
+    @Query private var items: [Item]
+    @State private var showPaywall = false
     @State private var images: [UIImage] = []
     @State private var isProcessing = false
     @State private var draft: ExtractionDraft?
@@ -15,7 +19,12 @@ struct ScanFlow: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let draft {
+                if draft == nil && !store.canAddItem(count: items.count) {
+                    EmptyStateView(title: "Free limit reached",
+                                   message: "The free version keeps up to \(StoreManager.freeItemLimit) items. Unlock Pro to add unlimited items.",
+                                   systemImage: "lock",
+                                   actionTitle: "Unlock Pro") { showPaywall = true }
+                } else if let draft {
                     ReviewView(model: ReviewModel(draft: draft)) { dismiss() }
                 } else if isProcessing {
                     ContentUnavailableView("Reading receipt…", systemImage: "doc.text.magnifyingglass")
@@ -30,6 +39,7 @@ struct ScanFlow: View {
             .navigationTitle(showCamera ? "" : "Scan")
             .toolbar(showCamera ? .hidden : .visible, for: .navigationBar)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() }.accessibilityIdentifier(AXID.cancelButton) } }
+            .sheet(isPresented: $showPaywall) { PaywallView() }
         }
     }
 
@@ -95,7 +105,8 @@ struct ScanFlow: View {
                 return
             }
             let cgs = images.compactMap(\.cgImage)
-            let d = await ScanPipeline().run(images: cgs)
+            var d = await ScanPipeline().run(images: cgs)
+            d.pageImages = images.compactMap { $0.jpegData(compressionQuality: 0.7) }
             isProcessing = false
             draft = d
         }

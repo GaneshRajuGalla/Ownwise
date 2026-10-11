@@ -1,7 +1,7 @@
 import SwiftUI
-import UserNotifications
 
 struct OnboardingView: View {
+    @Environment(ReminderScheduler.self) private var reminder
     var onFinish: () -> Void
     @State private var page = 0
 
@@ -17,7 +17,7 @@ struct OnboardingView: View {
 
     var page1: some View {
         VStack(spacing: DS.Space.xl) {
-            Image(systemName: "doc.viewfinder").font(.system(size: 72)).foregroundStyle(.indigo)
+            Image(systemName: "doc.viewfinder").font(.largeTitle).imageScale(.large).foregroundStyle(.indigo)
             Text("Scan receipts").font(.largeTitle.bold())
             Text("One scan captures your purchase details — 100% on-device.")
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
@@ -30,13 +30,15 @@ struct OnboardingView: View {
 
     var page2: some View {
         VStack(spacing: DS.Space.xl) {
-            Image(systemName: "bell.badge").font(.system(size: 72)).foregroundStyle(.indigo)
+            Image(systemName: "bell.badge").font(.largeTitle).imageScale(.large).foregroundStyle(.indigo)
             Text("Never miss a return or warranty").font(.largeTitle.bold()).multilineTextAlignment(.center)
             Text("Get reminders before return windows, warranties and service dates.")
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
             Button("Allow reminders") {
-                Task { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) }
-                page = 2
+                Task {
+                    await reminder.requestPermissionIfNeeded()
+                    page = 2
+                }
             }
             .buttonStyle(.glassProminent)
             .accessibilityIdentifier(AXID.onboardingContinue)
@@ -46,7 +48,7 @@ struct OnboardingView: View {
 
     var page3: some View {
         VStack(spacing: DS.Space.xl) {
-            Image(systemName: "lock.shield").font(.system(size: 72)).foregroundStyle(.indigo)
+            Image(systemName: "lock.shield").font(.largeTitle).imageScale(.large).foregroundStyle(.indigo)
             Text("Private by design").font(.largeTitle.bold())
             Text("No account. No cloud. No tracking. Your data never leaves your iPhone.")
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)

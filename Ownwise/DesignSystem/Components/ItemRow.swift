@@ -45,10 +45,6 @@ struct ItemRow: View {
         [item.brand, item.merchant].filter { !$0.isEmpty }.joined(separator: " · ")
     }
     var worstStatus: CoverageStatus? {
-        (item.coverages ?? []).map { coverageStatus(of: $0, now: .now) }
-            .sorted { rank($0) < rank($1) }.first
-    }
-    func rank(_ s: CoverageStatus) -> Int {
-        switch s { case .serviceDue: 0; case .expiringSoon: 1; case .expired: 2; case .active: 3 }
+        overallStatus(of: item.coverages ?? [], now: .now)
     }
 }

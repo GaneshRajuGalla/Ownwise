@@ -32,6 +32,16 @@ enum CoverageKind: String, CaseIterable, Codable, Sendable {
 
 enum AttachmentKind: String, CaseIterable, Codable, Sendable {
     case receipt, invoice, warrantyCard, manual, photo
+
+    var label: String {
+        switch self {
+        case .receipt: "Receipt"
+        case .invoice: "Invoice"
+        case .warrantyCard: "Warranty card"
+        case .manual: "Manual"
+        case .photo: "Photo"
+        }
+    }
 }
 
 enum CoverageStatus: Sendable, Equatable {
@@ -48,6 +58,16 @@ enum CoverageStatus: Sendable, Equatable {
         case .serviceDue: "Service due"
         }
     }
+}
+
+/// The one status to show for an item: the most urgent live coverage.
+/// "Expired" only when nothing is still covered (an ended return window doesn't
+/// make an item with an active warranty look expired).
+func overallStatus(of coverages: [Coverage], now: Date, calendar: Calendar = .current) -> CoverageStatus? {
+    func rank(_ s: CoverageStatus) -> Int {
+        switch s { case .serviceDue: 0; case .expiringSoon: 1; case .active: 2; case .expired: 3 }
+    }
+    return coverages.map { coverageStatus(of: $0, now: now, calendar: calendar) }.min { rank($0) < rank($1) }
 }
 
 /// Pure status logic (unit-tested). Service-due takes precedence for service plans.

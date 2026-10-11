@@ -72,4 +72,24 @@ struct CoverageStatusTests {
             Issue.record("expected expiringSoon")
         }
     }
+
+    @Test("Ended return window doesn't make an item with an active warranty look expired")
+    func overallPrefersLiveCoverage() {
+        let now = Date.now
+        let returned = Coverage(kind: .returnWindow, start: now.addingTimeInterval(-86400 * 60), end: now.addingTimeInterval(-86400 * 30))
+        let warranty = Coverage(kind: .manufacturer, start: now, end: now.addingTimeInterval(86400 * 300))
+        #expect(overallStatus(of: [returned, warranty], now: now) == .active)
+        #expect(overallStatus(of: [returned], now: now) == .expired)
+        #expect(overallStatus(of: [], now: now) == nil)
+    }
+
+    @Test("Most urgent live coverage wins")
+    func overallMostUrgent() {
+        let now = Date.now
+        let soon = Coverage(kind: .returnWindow, start: now, end: now.addingTimeInterval(86400 * 2))
+        let warranty = Coverage(kind: .manufacturer, start: now, end: now.addingTimeInterval(86400 * 300))
+        if case .expiringSoon = overallStatus(of: [warranty, soon], now: now) {} else {
+            Issue.record("expected expiringSoon")
+        }
+    }
 }

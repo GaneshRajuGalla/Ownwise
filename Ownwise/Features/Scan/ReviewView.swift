@@ -32,7 +32,7 @@ struct ReviewView: View {
             }
             if !model.fieldsFromAI.isEmpty {
                 Section {
-                    Label("Fields marked ✦ were suggested on-device. Please confirm.", systemImage: "sparkles")
+                    Label("Some fields were filled in by on-device AI. Please check them before saving.", systemImage: "sparkles")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }

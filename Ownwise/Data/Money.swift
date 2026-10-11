@@ -1,0 +1,33 @@
+import Foundation
+
+/// Prices are stored as integer minor units in the item's currency
+/// (cents for USD/EUR, whole yen for JPY). This is the single place that converts.
+enum Money {
+    /// Decimal places the currency uses (2 for USD, 0 for JPY, 3 for KWD).
+    nonisolated static func fractionDigits(for currencyCode: String) -> Int {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currencyCode.isEmpty ? (Locale.current.currency?.identifier ?? "USD") : currencyCode
+        return formatter.maximumFractionDigits
+    }
+
+    nonisolated static func minorUnits(_ amount: Double, currencyCode: String) -> Int {
+        Int((amount * pow(10, Double(fractionDigits(for: currencyCode)))).rounded())
+    }
+
+    nonisolated static func amount(_ minorUnits: Int, currencyCode: String) -> Double {
+        Double(minorUnits) / pow(10, Double(fractionDigits(for: currencyCode)))
+    }
+
+    /// Plain number for editing / CSV, e.g. "1299.50" or "129950" (no grouping, "." decimal).
+    nonisolated static func plainString(_ minorUnits: Int, currencyCode: String) -> String {
+        let digits = fractionDigits(for: currencyCode)
+        return String(format: "%.\(digits)f", amount(minorUnits, currencyCode: currencyCode))
+    }
+
+    /// Localized display, e.g. "$1,299.50" or "¥129,950".
+    nonisolated static func formatted(_ minorUnits: Int, currencyCode: String) -> String {
+        let code = currencyCode.isEmpty ? (Locale.current.currency?.identifier ?? "USD") : currencyCode
+        return amount(minorUnits, currencyCode: code).formatted(.currency(code: code))
+    }
+}

@@ -10,7 +10,7 @@ struct PrivacyView: View {
             }
             Section(header: Text("Policy")) {
                 Link("Privacy policy", destination: URL(string: "https://ganeshrajugalla.github.io/Ownwise/privacy.html")!)
-                Link("Support", destination: URL(string: "https://ganeshrajugalla.github.io/Ownwise/support.html")!)
+                Link("Contact support", destination: URL(string: "mailto:ganeshraju14014@gmail.com")!)
             }
         }
         .navigationTitle("Privacy")

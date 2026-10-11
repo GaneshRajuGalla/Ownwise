@@ -4,15 +4,24 @@ import SwiftUI
 import UIKit
 
 struct ExportService {
+    var locale: Locale = .current
+    var now: Date = .now
+    var calendar: Calendar = .current
+
+    static let usLetter = CGSize(width: 612, height: 792)
+    static let a4 = CGSize(width: 595, height: 842)
+
+    // MARK: CSV
+
     /// RFC-4180 CSV of all items.
     func makeCSV(items: [Item]) -> Data {
-        var rows: [String] = ["name,brand,category,merchant,purchaseDate,priceMinor,currencyCode,serialNumber,orderNumber"]
+        var rows: [String] = ["name,brand,category,merchant,purchaseDate,price,currencyCode,serialNumber,orderNumber"]
         let iso = ISO8601DateFormatter()
         for it in items {
             rows.append([
                 csvField(it.name), csvField(it.brand), csvField(it.category.rawValue),
                 csvField(it.merchant), csvField(iso.string(from: it.purchaseDate)),
-                it.priceMinor.map(String.init) ?? "", csvField(it.currencyCode),
+                it.priceMinor.map { Money.plainString($0, currencyCode: it.currencyCode) } ?? "", csvField(it.currencyCode),
                 csvField(it.serialNumber), csvField(it.orderNumber)
             ].joined(separator: ","))
         }
@@ -26,45 +35,182 @@ struct ExportService {
         return s
     }
 
-    /// Claim Pack PDF for one item.
+    func csvFile(items: [Item]) throws -> ExportFile {
+        try write(makeCSV(items: items), named: "Ownwise Items \(now.formatted(.iso8601.year().month().day())).csv")
+    }
+
+    // MARK: Claim Pack
+
+    /// US Letter for US/CA, A4 elsewhere.
+    func paperSize() -> CGSize {
+        switch locale.region?.identifier {
+        case "US", "CA": Self.usLetter
+        default: Self.a4
+        }
+    }
+
+    /// Whole days from today until `end` (negative once past).
+    func daysLeft(until end: Date) -> Int {
+        calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: end)).day ?? 0
+    }
+
+    func coverageLeft(_ c: Coverage) -> String {
+        if c.kind == .servicePlan, let next = c.nextServiceDate {
+            return String(localized: "Next service \(next.formatted(date: .abbreviated, time: .omitted))")
+        }
+        let days = daysLeft(until: c.endDate)
+        return days < 0 ? String(localized: "Expired") : String(localized: "\(days) days left")
+    }
+
+    func claimPackFileName(for item: Item) -> String {
+        let unsafe = CharacterSet(charactersIn: "/\\:?*|<>\"").union(.newlines)
+        let name = item.name.components(separatedBy: unsafe).joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        return "Claim Pack - \(name.isEmpty ? "Item" : name).pdf"
+    }
+
+    /// Images to append after the facts page: receipts and warranty cards first.
+    func attachmentImages(of item: Item) -> [(kind: AttachmentKind, image: UIImage)] {
+        let order = AttachmentKind.allCases
+        return (item.attachments ?? [])
+            .compactMap { att -> (AttachmentKind, Date, UIImage)? in
+                guard let data = att.fileData else { return nil }
+                let kind = AttachmentKind(rawValue: att.kindRaw) ?? .photo
+                if let image = UIImage(data: data) { return (kind, att.createdAt, image) }
+                if let page = PDFDocument(data: data)?.page(at: 0) {
+                    return (kind, att.createdAt, page.thumbnail(of: paperSize(), for: .mediaBox))
+                }
+                return nil
+            }
+            .sorted { ($0.0 == $1.0) ? $0.1 < $1.1 : (order.firstIndex(of: $0.0) ?? 0) < (order.firstIndex(of: $1.0) ?? 0) }
+            .map { (kind: $0.0, image: $0.2) }
+    }
+
+    /// Claim Pack PDF for one item: a vector facts page, then one page per receipt/warranty image.
     @MainActor
     func makeClaimPackPDF(item: Item) -> Data {
-        let view = ClaimPackView(item: item)
-        let renderer = ImageRenderer(content: view)
-        renderer.proposedSize = .init(width: 612, height: 792)
-        guard let image = renderer.uiImage else { return Data() }
-        let pdfRenderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: image.size))
-        return pdfRenderer.pdfData { ctx in
-            ctx.beginPage()
-            image.draw(at: .zero)
+        let size = paperSize()
+        let data = NSMutableData()
+        var box = CGRect(origin: .zero, size: size)
+        guard let consumer = CGDataConsumer(data: data as CFMutableData),
+              let pdf = CGContext(consumer: consumer, mediaBox: &box, nil) else { return Data() }
+
+        let images = attachmentImages(of: item)
+        var pages: [AnyView] = [AnyView(ClaimPackView(item: item, service: self, imageCount: images.count))]
+        pages += images.enumerated().map { index, entry in
+            AnyView(attachmentPage(item: item, kind: entry.kind, image: entry.image, page: index + 2, of: images.count + 1))
         }
+
+        for page in pages {
+            let renderer = ImageRenderer(content: page
+                .frame(width: size.width, height: size.height, alignment: .topLeading)
+                .background(Color.white)
+                .environment(\.colorScheme, .light))
+            renderer.render { _, draw in
+                pdf.beginPDFPage(nil)
+                draw(pdf)
+                pdf.endPDFPage()
+            }
+        }
+        pdf.closePDF()
+        return data as Data
+    }
+
+    @MainActor
+    func claimPackFile(for item: Item) throws -> ExportFile {
+        try write(makeClaimPackPDF(item: item), named: claimPackFileName(for: item))
+    }
+
+    private func attachmentPage(item: Item, kind: AttachmentKind, image: UIImage, page: Int, of total: Int) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("\(item.name) · \(kind.label)").font(.headline)
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Text("Page \(page) of \(total)").font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(40)
+    }
+
+    // MARK: Files
+
+    func write(_ data: Data, named name: String) throws -> ExportFile {
+        guard !data.isEmpty else { throw CocoaError(.fileWriteUnknown) }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        try data.write(to: url, options: .atomic)
+        return ExportFile(url: url)
     }
 }
 
 struct ClaimPackView: View {
     let item: Item
+    let service: ExportService
+    let imageCount: Int
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(item.name).font(.largeTitle.bold())
-            Text([item.brand, item.merchant].filter { !$0.isEmpty }.joined(separator: " · "))
-            if !item.serialNumber.isEmpty { Text("Serial: \(item.serialNumber)") }
-            Text("Purchased: \(item.purchaseDate.formatted(date: .abbreviated, time: .omitted))")
-            if let price = item.priceMinor {
-                let major = Double(price) / 100.0
-                Text("Price: \(major.formatted(.currency(code: item.currencyCode)))")
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Claim Pack").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text(item.name).font(.largeTitle.bold())
+                let subtitle = [item.brand, item.modelNumber].filter { !$0.isEmpty }.joined(separator: " · ")
+                if !subtitle.isEmpty { Text(subtitle).font(.title3).foregroundStyle(.secondary) }
             }
-            ForEach(item.coverages ?? [], id: \.id) { c in
-                HStack {
-                    Text(c.kind.label)
-                    Spacer()
-                    Text(c.endDate.formatted(date: .abbreviated, time: .omitted))
+
+            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
+                row("Purchased", item.purchaseDate.formatted(date: .long, time: .omitted))
+                row("Store", item.merchant)
+                if let price = item.priceMinor {
+                    row("Price", Money.formatted(price, currencyCode: item.currencyCode))
+                }
+                row("Serial number", item.serialNumber)
+                row("Model number", item.modelNumber)
+                row("Order number", item.orderNumber)
+                row("Support phone", item.supportPhone)
+            }
+            .font(.body)
+
+            let coverages = (item.coverages ?? []).sorted { $0.startDate < $1.startDate }
+            if !coverages.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Coverage").font(.headline)
+                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
+                        ForEach(coverages, id: \.id) { c in
+                            GridRow {
+                                Text(c.provider.isEmpty ? c.kind.label : "\(c.kind.label) (\(c.provider))")
+                                Text(c.kind == .servicePlan ? "" : c.endDate.formatted(date: .abbreviated, time: .omitted))
+                                Text(service.coverageLeft(c)).bold()
+                            }
+                        }
+                    }
                 }
             }
+
+            if !item.notes.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Notes").font(.headline)
+                    Text(item.notes)
+                }
+            }
+
+            if imageCount > 0 {
+                Text("Receipt and warranty documents follow on the next \(imageCount) page(s).")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
             Spacer()
-            Text("Generated by Ownwise").font(.caption).foregroundStyle(.secondary)
+            Text("Generated by Ownwise on \(service.now.formatted(date: .long, time: .omitted))")
+                .font(.caption).foregroundStyle(.secondary)
         }
         .padding(40)
-        .frame(width: 612, alignment: .leading)
-        .background(Color.white)
+    }
+
+    @ViewBuilder
+    private func row(_ label: LocalizedStringKey, _ value: String) -> some View {
+        if !value.isEmpty {
+            GridRow {
+                Text(label).foregroundStyle(.secondary)
+                Text(value)
+            }
+        }
     }
 }
