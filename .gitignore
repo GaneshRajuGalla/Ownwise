@@ -69,3 +69,13 @@ Appstore Images/Raw/
 *.p12
 *.p8
 *.mobileprovision
+
+# Local build output (archives, IPAs)
+build/
+
+# asc CLI run reports
+.asc/reports/
+
+# Personal research notes (not part of the app)
+research_notes/
+reports/
