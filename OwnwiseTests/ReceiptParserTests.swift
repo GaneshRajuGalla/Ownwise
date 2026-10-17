@@ -52,6 +52,64 @@ struct ReceiptParserTests {
         #expect(jp.totalMinor == 129950) // JPY: 0 minor units
     }
 
+    /// The fixture table carries an expected total for every receipt; assert all of them, so a
+    /// number this parser gets wrong is a failing test rather than a user's wrong price.
+    @Test("Every fixture's total and currency are read exactly")
+    func totalsMatchEveryFixture() {
+        let p = ReceiptParser()
+        for fixture in Self.fixtures {
+            guard let expected = fixture.total else { continue }
+            let parsed = p.parse(fixture.text)
+            #expect(parsed.totalMinor == expected,
+                    "\(fixture.name): got \(parsed.totalMinor.map(String.init) ?? "nil"), want \(expected)")
+            if let currency = fixture.currency {
+                #expect(parsed.currencyCode == currency, "\(fixture.name): currency")
+            }
+        }
+    }
+
+    @Test("Subtotal, savings, item counts and tax lines never win the total")
+    func totalIgnoresNearMisses() {
+        let p = ReceiptParser()
+
+        let subtotalThenTotal = """
+        Best Buy
+        Subtotal: $1,199.50
+        Tax: $100.00
+        Total: $1,299.50
+        """
+        #expect(p.parse(subtotalThenTotal).totalMinor == 129950)
+
+        let savings = """
+        Target
+        Total savings: $45.00
+        Grand Total: $120.00
+        """
+        #expect(p.parse(savings).totalMinor == 12000)
+
+        let itemCount = """
+        Croma
+        Total items: 3
+        Total: ₹1,29,950.00
+        """
+        #expect(p.parse(itemCount).totalMinor == 12995000)
+
+        // A plainer label later in the receipt must not beat an unambiguous one earlier.
+        let strongBeatsWeak = """
+        Fnac
+        Total: 90,00 €
+        Grand Total: 1.000,00 €
+        """
+        #expect(p.parse(strongBeatsWeak).totalMinor == 100000)
+    }
+
+    @Test("Indian lakh grouping is not read as a decimal comma")
+    func lakhGrouping() {
+        let p = ReceiptParser()
+        #expect(p.parse("Croma\nTotal: ₹1,29,950.00").totalMinor == 12995000)
+        #expect(p.parse("Flipkart\nTotal: ₹1,29,950").totalMinor == 12995000)
+    }
+
     @Test("Return days")
     func returns() {
         let p = ReceiptParser().parse(Self.fixtures[0].text)

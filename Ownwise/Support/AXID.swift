@@ -98,4 +98,7 @@ enum AXID {
     static let itemRowPrefix = "item_row_"
     static let coverageKindPicker = "coverage_kind_picker"
     static let addCoverageButton = "add_coverage_button"
+    static let scanProblem = "scan_problem"
+    static let scanProblemPrimary = "scan_problem_primary"
+    static let scanProblemSecondary = "scan_problem_secondary"
 }

@@ -1,15 +1,21 @@
 import Foundation
-import CoreGraphics
+import UIKit
 
 /// Baseline parse, then AI fills only missing fields (parser wins on conflict).
+///
+/// `run` is `nonisolated` on purpose. The project defaults to `MainActor` isolation, so without
+/// saying so out loud every step here — decoding the picked pages, JPEG-compressing them for
+/// storage, Vision OCR, the parse and the AI merge — would run on the main actor and a
+/// multi-page scan would visibly hitch the UI.
 struct ScanPipeline: Sendable {
     var ocr: OCRService = OCRService()
     var parser: ReceiptParser = ReceiptParser()
     var ai: AIExtractor = AIExtractor()
 
-    func run(images: [CGImage]) async -> ExtractionDraft {
+    nonisolated func run(images: [UIImage]) async -> ExtractionDraft {
+        let pageImages = images.compactMap(\.cgImage)
         // OCR all pages concurrently, then put them back in page order for the parser.
-        let texts = await orderedConcurrentMap(images) { img in
+        let texts = await orderedConcurrentMap(pageImages) { img in
             (try? await self.ocr.recognize(img).text) ?? ""
         }
         let joined = texts.joined(separator: "\n")
@@ -29,6 +35,8 @@ struct ScanPipeline: Sendable {
             ocrText: joined
         )
         draft.name = parsed.productName ?? ""
+        // Compressing the pages is part of the heavy work, so it belongs off the main actor too.
+        draft.pageImages = images.compactMap { $0.jpegData(compressionQuality: 0.7) }
 
         if let aiFields = await ai.extractWithTimeout(joined) {
             merge(into: &draft, ai: aiFields)

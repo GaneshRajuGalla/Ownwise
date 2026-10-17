@@ -114,6 +114,31 @@ C2 (`parseTotal` must not match `Subtotal`/`Total savings`), C3 (duplicate servi
 C4 (camera denied / OCR empty / AI unavailable states), C5 (OCR, JPEG, PDF off the main actor),
 H7 (`NumberFormatter` reuse).
 
+### Phase 4 delivery log — 17 Oct 2026
+
+| Gap | What changed |
+|---|---|
+| C2 | `parseTotal` no longer takes the first line that *contains* "total". Candidates are now ranked: an unambiguous label ("Grand Total", "Amount Due", "Gesamtbetrag", "Total TTC", "合計", "总计") beats a plainer one ("Total", "Gesamt", "Balance"); a later line beats an earlier one, because receipts print the amount paid last; only then does the larger amount win. Keywords match on **word boundaries**, so `Subtotal` cannot be read as `total`, and a noise list removes `Total savings`, `Total items`, `Total tax`, `Amount tendered`, `Total excl. VAT` and friends. `merchantName`/`productName` use the same helper. |
+| C2 (extra) | Found while testing C2: the number scanner's pattern stopped at the first short group, so **`₹1,29,950.00` parsed as 1.29** — the Indian lakh grouping was wrong in every currency and no test asserted it. `allNumbers` now matches a whole number run and `parseAmount` treats a trailing two-digit comma group as decimals ("49,90" → 49.90) while keeping lakh grouping intact. Every fixture's expected total is now asserted, not just three of them. |
+| C3 | (done in Phase 2) the duplicate guard covers service plans by comparing intervals. |
+| C4 | `ScanFlow` gained a `ScanProblem` state with three screens — camera refused (offers **Open Settings** and a photo), no document scanner on this device, and "we couldn't read that" (offers another photo and manual entry). Every one of them offers a way forward, so no scan is a dead end. The camera is now checked *before* presenting (`AVCaptureDevice.authorizationStatus` + `VNDocumentCameraViewController.isSupported`), and `cameraFailed` distinguishes a refusal from the user's own cancel, which stays silent. A scan whose OCR text is empty no longer opens a blank review form as though it had worked. |
+| C5 | `ScanPipeline.run` and `OCRService.recognize` are `nonisolated`, and the pipeline now takes the picked `UIImage`s itself, so page decoding, **JPEG compression**, Vision OCR, the parse and the AI merge all run off the main actor — which is what the project's `MainActor`-by-default isolation otherwise prevents. `AIExtractor` is an actor and was already off-main. |
+| H7 | `Money.fractionDigits` built a `NumberFormatter` on **every** call, and it is called several times per list row. Currency exponents are now read once per currency behind a lock and reused. |
+
+**C5 residual, deliberately left:** the Claim Pack's page rasterisation still runs on the main
+actor, because `ImageRenderer` is a `MainActor`-only API — rasterising a SwiftUI page into a PDF
+context cannot be moved without replacing the whole layout with Core Graphics. The gap's headline
+symptom (a multi-page *scan* hitching) is fixed; a large Claim Pack export remains a brief
+main-thread task, and this is the reason.
+
+Tests: `ReceiptParserTests` — every fixture's total and currency asserted, near-miss lines
+(`Subtotal`, `Total savings`, `Total items`, a later weak label vs an earlier strong one) and lakh
+grouping; `MoneyTests.fractionDigitsAreStable`; new `ScanFailureUITests` proving both failure
+screens appear, that the escape hatch reaches Review, and that an unreadable scan does **not** open
+a blank draft. Two new DEBUG-only launch arguments (`-forceScanUnavailable`, `-forceScanUnreadable`)
+make those states testable on any device.
+`Fixtures` is now `#if DEBUG`, so no fixture OCR text ships in the App Store build (H2, in part).
+
 ## Phase 5 — Structure and performance
 
 H2 (move `Fixtures` out of production, `ClaimPackView` out of Services), H4 (one price parser,
@@ -166,7 +191,7 @@ F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
 | 1 — Data safety | **done — awaiting the owner's build** |
 | 2 — Sync (`F3`) + trust (`A4`, `A5`) | **done in code; `F3` needs a capability step** |
 | 3 — Localisation & accessibility | **done — awaiting the owner's build** |
-| 4 — Scan quality (+ barcode, promoted) | not started |
+| 4 — Scan quality (+ barcode, promoted) | **done — awaiting the owner's build** |
 | 5 — Structure & performance | not started |
 | 6 — Test integrity | not started |
 | 7 — Share Sheet import (`E1`) | not started |

@@ -110,4 +110,7 @@ enum AXID {
     static let applyReminderToAllButton = "apply_reminder_to_all"
     static let reminderPresetPrefix = "reminder_preset_"
     static let editCoverageReminderPrefix = "edit_coverage_reminder_"
+    static let scanProblem = "scan_problem"
+    static let scanProblemPrimary = "scan_problem_primary"
+    static let scanProblemSecondary = "scan_problem_secondary"
 }

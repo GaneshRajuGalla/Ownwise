@@ -26,4 +26,15 @@ struct MoneyTests {
         #expect(!text.contains("1,299.50"), "\(text)")
         #expect(text.filter(\.isNumber) == "129950", "\(text)")
     }
+
+    @Test("A currency's decimals are read once and then reused")
+    func fractionDigitsAreStable() {
+        #expect(Money.fractionDigits(for: "USD") == 2)
+        #expect(Money.fractionDigits(for: "EUR") == 2)
+        #expect(Money.fractionDigits(for: "JPY") == 0)
+        #expect(Money.fractionDigits(for: "KWD") == 3)
+        // Second reads come from the cache and must agree with the first.
+        #expect(Money.fractionDigits(for: "USD") == 2)
+        #expect(Money.fractionDigits(for: "KWD") == 3)
+    }
 }

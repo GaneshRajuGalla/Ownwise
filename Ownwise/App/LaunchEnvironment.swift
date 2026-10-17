@@ -19,4 +19,12 @@ enum LaunchEnvironment {
     }
 
     static var skipOnboarding: Bool { args.contains("-skipOnboarding") }
+
+    /// Forces the "no document scanner" failure screen, so C4's recovery path can be tested on a
+    /// device where the real scanner would open.
+    static var forceScanUnavailable: Bool { args.contains("-forceScanUnavailable") }
+
+    /// Forces "the scan read no text", so the empty-scan screen can be tested without supplying
+    /// a blank image.
+    static var forceScanUnreadable: Bool { args.contains("-forceScanUnreadable") }
 }
