@@ -71,9 +71,13 @@ and uncheck "Activate scheme" prompts. Then:
    the repo root but belongs to no target today, so nothing breaks until you do this).
 3. Add **`Ownwise/Services/Import/SharedInbox.swift`** to the target as well. Both halves must agree
    on the manifest format, so they share one file instead of each having its own copy.
-4. Give the extension its own entitlements file with the same App Group, and add the App Group
+4. Add **`Ownwise/Services/Import/AppGroup.swift`** too. `SharedInbox` calls `AppGroup.directory` to
+   find the container, so without this file the extension fails to build with *cannot find 'AppGroup'
+   in scope*. It is deliberately a separate file (no SwiftData, read from any bundle) so both halves
+   resolve the same container.
+5. Give the extension its own entitlements file with the same App Group, and add the App Group
    capability in Xcode's Signing & Capabilities tab for both targets.
-5. Add the **same `OwnwiseAppGroupID` key** to the extension's Info.plist. `SharedInbox.default`
+6. Add the **same `OwnwiseAppGroupID` key** to the extension's Info.plist. `SharedInbox.default`
    reads it from `Bundle.main` — which is the *extension's* bundle when the extension is the one
    running — so without this key the extension would quietly write nothing.
 

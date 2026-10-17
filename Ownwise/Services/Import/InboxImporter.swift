@@ -50,7 +50,7 @@ enum InboxImporter {
         for file in files {
             guard let data = try? Data(contentsOf: file.url) else { continue }
             if isPDF(name: file.name, data: data) {
-                images.append(contentsOf: images(fromPDF: data))
+                images.append(contentsOf: pageImages(fromPDF: data))
             } else if let image = UIImage(data: data) {
                 images.append(image)
             }
@@ -89,7 +89,7 @@ enum InboxImporter {
     ///
     /// The rendering itself is on the main actor, like Claim Pack's page rendering (C5) — it is one
     /// receipt, not a twenty-page scan — while the OCR and parsing that follow are off it.
-    private static func images(fromPDF data: Data, maxPages: Int = 3) -> [UIImage] {
+    private static func pageImages(fromPDF data: Data, maxPages: Int = 3) -> [UIImage] {
         guard let document = PDFDocument(data: data) else { return [] }
         return (0..<min(document.pageCount, maxPages)).compactMap { index in
             guard let page = document.page(at: index) else { return nil }

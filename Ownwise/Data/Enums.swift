@@ -1,6 +1,6 @@
 import Foundation
 
-enum ItemCategory: String, CaseIterable, Codable, Sendable {
+nonisolated enum ItemCategory: String, CaseIterable, Codable, Sendable {
     case appliance, electronics, mobile, computer, furniture, vehicle, other
 
     var label: String {
@@ -16,7 +16,7 @@ enum ItemCategory: String, CaseIterable, Codable, Sendable {
     }
 }
 
-enum CoverageKind: String, CaseIterable, Codable, Sendable {
+nonisolated enum CoverageKind: String, CaseIterable, Codable, Sendable {
     case returnWindow, manufacturer, extended, servicePlan, insurance
 
     var label: String {
@@ -30,7 +30,7 @@ enum CoverageKind: String, CaseIterable, Codable, Sendable {
     }
 }
 
-enum AttachmentKind: String, CaseIterable, Codable, Sendable {
+nonisolated enum AttachmentKind: String, CaseIterable, Codable, Sendable {
     case receipt, invoice, warrantyCard, manual, photo
 
     var label: String {
@@ -44,7 +44,7 @@ enum AttachmentKind: String, CaseIterable, Codable, Sendable {
     }
 }
 
-enum CoverageStatus: Sendable, Equatable {
+nonisolated enum CoverageStatus: Sendable, Equatable {
     case active
     case expiringSoon(days: Int)
     case expired

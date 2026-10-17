@@ -356,6 +356,65 @@ has been applied and read back: the ASC description, keywords and promotional te
 
 
 
+## Build fixes — 17 Oct 2026 (first real compile of Phases 1–10)
+
+Phases 1–10 were written but never compiled: every uploaded build predates them. The first build
+found two errors, and a whole-module typecheck found four more that would have appeared the moment the
+test targets were built. All six are fixed; all three Swift targets now typecheck clean with zero
+warnings.
+
+| Where | Error | Fix |
+|---|---|---|
+| `Data/Money.swift` | `digitsLock` was a main-actor-isolated static read from the `nonisolated` `fractionDigits` (H7's cache) | `private nonisolated static let digitsLock` — `NSLock` is `Sendable`, so plain `nonisolated`; `nonisolated(unsafe)` would only warn |
+| `Services/Import/InboxImporter.swift` | `images.append(contentsOf: images(fromPDF:))` resolved to the local `images` array, not the static helper ("cannot call value of non-function type `[UIImage]`") | helper renamed `pageImages(fromPDF:)` |
+| `OwnwiseTests/ExportServiceTests.swift` | `PDFDocument(data:)` is optional, so `.page(at:)` needed unwrapping inside `#require` | `#require` the document first, then the page (same shape as the other test) |
+| `OwnwiseTests/ExportServiceTests.swift` | three `#expect((… ?? "").contains(…))` expanded into a mangled swift-testing diagnostic plus two warnings | hoisted to `first`/`second`/`last` locals |
+| `OwnwiseTests/LibraryActionsTests.swift` | `FetchDescriptor<Attachment>()` was ambiguous between the app's `Attachment` model and `Testing.Attachment` | `FetchDescriptor<Ownwise.Attachment>()` |
+| `Data/Enums.swift`, `Support/Links.swift` | `label` and `Links.*` were main-actor-isolated, so `#expect` (whose expansion is a nonisolated context) could not read them | the four pure enums and `Links` are now `nonisolated`, matching how `Money.fractionDigits`, `LibraryPreferences.label(for:)`, `BarcodeService` and the Import files are already treated. Nothing here touches actor state |
+
+The last one is worth keeping: the extension and widget targets do not default to `MainActor`
+isolation, so pure metadata that is `nonisolated` compiles there; main-actor-by-default would not.
+
+**Corrected in the runbooks:** `docs/share-extension.md` and `docs/widgets.md` both omitted
+`Ownwise/Services/Import/AppGroup.swift` from the target's file list. `SharedInbox` and
+`SharedSnapshot` both call `AppGroup.directory`, so the extension and widget targets would not build
+without it (*cannot find 'AppGroup' in scope*). Both steps now list it.
+
+### How this was verified (no `xcodebuild`, no simulator)
+
+The project's build settings can be reproduced with `swiftc` directly, which is what caught the four
+latent test errors:
+
+```
+SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+PLATFORM=$(xcrun --sdk iphonesimulator --show-sdk-platform-path)
+COMMON=(-target arm64-apple-ios26.0-simulator -sdk "$SDK" -swift-version 6
+        -strict-concurrency=complete -enable-upcoming-feature NonisolatedNonsendingByDefault
+        -enable-upcoming-feature MemberImportVisibility)
+
+# app module (only this target sets default-isolation MainActor)
+xcrun swiftc -typecheck -default-isolation MainActor "${COMMON[@]}" $(find Ownwise -name '*.swift')
+
+# @testable import needs a module emitted with -enable-testing
+xcrun swiftc -emit-module -module-name Ownwise -enable-testing -default-isolation MainActor \
+  -emit-module-path /tmp/owmod/Ownwise.swiftmodule "${COMMON[@]}" $(find Ownwise -name '*.swift')
+
+# both test targets, plus the test frameworks and the swift-testing macro plugin
+xcrun swiftc -typecheck -I /tmp/owmod "${COMMON[@]}" \
+  -F "$PLATFORM/Developer/Library/Frameworks" -F "$SDK/Developer/Library/Frameworks" \
+  -I "$PLATFORM/Developer/usr/lib" \
+  -load-plugin-library /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib \
+  $(find OwnwiseTests -name '*.swift')
+```
+
+`Extensions/` is outside every target, so its two files were typechecked the same way with the file
+lists from the runbooks (widget: widget + `SharedSnapshot` + `AppGroup`; extension: extension +
+`SharedInbox` + `AppGroup`) — both clean.
+
+Worth knowing: under `-default-isolation MainActor`, `nonisolated(unsafe)` on an immutable `let`
+produces a warning ("unnecessary for a constant with 'Sendable' type"), while plain `nonisolated`
+does not.
+
 ## Awaiting the owner's decision
 
 - **F3** iCloud sync: still your call to *start*, but the evidence is now clear that it is the
@@ -389,6 +448,10 @@ has been applied and read back: the ASC description, keywords and promotional te
 | 8 — Widgets + App Intents (`E2`, `E3`, `B4`) | **`E3` and `B4` done; the `E2` widget target + App Group are the owner's step** |
 | 9 — Value features (`E4`, `E5`, `E7`, `E9`, `E10`) | **done; `E6`, `E8` (schema V3) and `E11` (multi-select) designed and deferred** |
 | 10 — Reach (`F1` iPad-compatible, `F2`) | **not started — both need something only the owner can supply (see the Phase 10 table)** |
+
+"Awaiting the owner's build" above means an archive and a real run, not a compile check: all three
+Swift targets typecheck clean with the project's exact settings (see *Build fixes* above). The build
+number is now **4**, because 2 and 3 are already on App Store Connect.
 
 ---
 

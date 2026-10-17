@@ -6,7 +6,7 @@ enum Money {
     /// Building a `NumberFormatter` is expensive and a currency's exponent never changes during
     /// a run, so each one is built once and remembered. The lock guards the cache itself; the
     /// formatters are only ever read after they are stored.
-    private static let digitsLock = NSLock()
+    private nonisolated static let digitsLock = NSLock()
     nonisolated(unsafe) private static var digitsByCurrency: [String: Int] = [:]
 
     /// Decimal places the currency uses (2 for USD, 0 for JPY, 3 for KWD).

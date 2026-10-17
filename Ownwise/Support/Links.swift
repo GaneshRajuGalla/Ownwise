@@ -2,7 +2,7 @@ import Foundation
 
 /// The app's fixed external links. Optional rather than force-unwrapped: a link that cannot be
 /// built is simply not offered, instead of taking the app down with it.
-enum Links {
+nonisolated enum Links {
     static var privacyPolicy: URL? {
         URL(string: "https://ganeshrajugalla.github.io/Ownwise/privacy.html")
     }

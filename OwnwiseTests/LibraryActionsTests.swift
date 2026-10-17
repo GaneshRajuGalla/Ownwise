@@ -23,7 +23,7 @@ struct LibraryActionsTests {
 
         #expect(try context.fetchCount(FetchDescriptor<Item>()) == 0)
         #expect(try context.fetchCount(FetchDescriptor<Coverage>()) == 0)
-        #expect(try context.fetchCount(FetchDescriptor<Attachment>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<Ownwise.Attachment>()) == 0)
     }
 
     @Test("Deleting one coverage unlinks it from its item and leaves the entry gone")
@@ -94,6 +94,6 @@ struct LibraryActionsTests {
         LibraryActions.delete(remove, of: item, in: context)
 
         #expect((item.attachments ?? []).map(\.id) == [keep.id])
-        #expect(try context.fetchCount(FetchDescriptor<Attachment>()) == 1)
+        #expect(try context.fetchCount(FetchDescriptor<Ownwise.Attachment>()) == 1)
     }
 }

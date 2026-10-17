@@ -49,7 +49,10 @@ Uncheck "Include Configuration Intent" (this widget needs no configuration), and
 2. Add **`Ownwise/Services/Import/SharedSnapshot.swift`** to the target as well. It is pure
    Foundation on purpose, so it compiles there without the app's models. Do *not* add
    `SnapshotBuilder.swift` — that one needs SwiftData and belongs to the app.
-3. Add the App Group capability to the widget target in Signing & Capabilities.
+3. Add **`Ownwise/Services/Import/AppGroup.swift`** too: `SharedSnapshot.default` calls
+   `AppGroup.directory("Widget")` to find the container, so the widget target does not build without
+   it (*cannot find 'AppGroup' in scope*). It is pure Foundation as well.
+4. Add the App Group capability to the widget target in Signing & Capabilities.
 
 ### 4. Test it
 

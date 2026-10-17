@@ -123,9 +123,12 @@ struct ExportServiceTests {
 
         // 45 rows at 20 a page: the first page (totals) plus three item pages.
         #expect(doc.pageCount == 4)
-        #expect((doc.page(at: 0)?.string ?? "").contains("45 items"))
-        #expect((doc.page(at: 1)?.string ?? "").contains("Items 1 of 3"))
-        #expect((doc.page(at: 3)?.string ?? "").contains("Items 3 of 3"))
+        let first = doc.page(at: 0)?.string ?? ""
+        let second = doc.page(at: 1)?.string ?? ""
+        let last = doc.page(at: 3)?.string ?? ""
+        #expect(first.contains("45 items"))
+        #expect(second.contains("Items 1 of 3"))
+        #expect(last.contains("Items 3 of 3"))
         // Nothing is silently dropped: every item appears somewhere.
         let all = (0..<doc.pageCount).compactMap { doc.page(at: $0)?.string }.joined()
         for index in [0, 20, 44] {
@@ -143,7 +146,8 @@ struct ExportServiceTests {
         let file = try svc.inventoryReportFile(items: [usd, eur])
         #expect(file.url.lastPathComponent == "Ownwise Inventory 2026-03-04.pdf")
 
-        let text = try #require(PDFDocument(data: svc.makeInventoryReportPDF(items: [usd, eur])).page(at: 0)?.string)
+        let doc = try #require(PDFDocument(data: svc.makeInventoryReportPDF(items: [usd, eur])))
+        let text = try #require(doc.page(at: 0)?.string)
         #expect(text.contains("Recorded value"))
         // Two currencies means two subtotals, each formatted by the same `Money` the app uses.
         #expect(text.contains(Money.formatted(129_950, currencyCode: "USD")))
