@@ -344,15 +344,48 @@ has been applied and read back: the ASC description, keywords and promotional te
 
 **Still to do, in order:**
 
-1. Archive and upload a build (the project is now on build 4) and wait for `VALID`.
-2. Attach it to 1.0 and submit the version **and** the IAP in the same review submission — the IAP
-   sells nothing on its own, and `asc review submit` only attaches the app version:
-   `versions attach-build` → `review submissions-create` → `review items-add --item-type appStoreVersions`
-   → `review items-add --item-type inAppPurchaseVersions --item-id d55070a2-e793-4cc1-903a-de704f3f092f`
-   → `review submissions-submit`. The IAP *version* currently reads `DEVELOPER_REJECTED`, so if the API
-   refuses to re-add it, it needs one click in App Store Connect (the IAP page → submit with 1.0).
-3. Confirm App Privacy is still published (the public API cannot read publish state — the one blocker
-   `asc validate` explicitly could not check).
+1. ~~Archive and upload a build (the project is now on build 4) and wait for `VALID`.~~ **Done** — the
+   owner uploaded **build 4** (`dd72f8d9-5009-477b-ae7f-3a6598f456bb`, `VALID`, 17 Oct 09:23 PT).
+2. ~~Attach it to 1.0 and submit the version **and** the IAP in the same review submission.~~ **Done** —
+   see *Submission — 17 Oct 2026* below.
+3. Confirm App Privacy is still published. The submission was accepted with `blockingIssues: []`, which
+   is App Store Connect's own validation passing, so a published privacy policy is the strong
+   inference — but the public API cannot read publish state, so a glance at the link is still free.
+
+## Submission — 17 Oct 2026
+
+Submitted through the API, in this order, because the one-shot `asc review submit` wrapper only
+attaches the app version and would have submitted before the IAP could be added:
+
+```
+asc versions attach-build  --version-id ce3cc370-… --build-id dd72f8d9-…        # attached: true
+asc review submissions-create --app 6818868242 --platform IOS                    # 46c816d9-4a57-4c44-9e7f-b94fb8e54878
+asc review items-add --item-type appStoreVersions      --item-id ce3cc370-…      # READY_FOR_REVIEW
+asc review items-add --item-type inAppPurchaseVersions --item-id d55070a2-…      # READY_FOR_REVIEW
+asc review submissions-submit --id 46c816d9-… --confirm                          # WAITING_FOR_REVIEW
+```
+
+| Field | Value |
+|---|---|
+| Submission | `46c816d9-4a57-4c44-9e7f-b94fb8e54878` |
+| State | `WAITING_FOR_REVIEW`, submitted 2026-10-17 16:47 UTC |
+| Items | app version 1.0 + build 4 + IAP *Ownwise Pro* `d55070a2-…` |
+| Blocking issues | none |
+| Release type | **`AFTER_APPROVAL`** — the version goes live on approval, no manual "Release" step |
+| Copyright | 2026 Ganesh Raju Galla |
+
+The concern recorded above that the IAP version's `DEVELOPER_REJECTED` state might block re-adding it
+turned out to be unfounded: it was accepted onto the submission as `READY_FOR_REVIEW` with no
+objection, so both the app and the IAP are on the same submission and the IAP will not be left behind.
+
+Because the release type is `AFTER_APPROVAL`, the honest answer to "when does it go live" is: the
+moment a reviewer approves it. Nothing further is required from the owner. Build 4 can meanwhile be
+put on TestFlight internal testing (no review needed) if there is any doubt about the binary.
+
+The one thing that was never obtained — the Guideline 2.1 text from rejection #2, which the API does
+not expose and whose Resolution Center thread is closed to replies — is still unknown. Everything the
+gap analysis could identify has been fixed; if this submission bounces, that text is the first thing
+to get.
 
 
 
@@ -450,8 +483,10 @@ does not.
 | 10 — Reach (`F1` iPad-compatible, `F2`) | **not started — both need something only the owner can supply (see the Phase 10 table)** |
 
 "Awaiting the owner's build" above means an archive and a real run, not a compile check: all three
-Swift targets typecheck clean with the project's exact settings (see *Build fixes* above). The build
-number is now **4**, because 2 and 3 are already on App Store Connect.
+Swift targets typecheck clean with the project's exact settings (see *Build fixes* above). That build
+has since happened — **build 4 was uploaded on 17 Oct and version 1.0 with the IAP is now
+`WAITING_FOR_REVIEW`** (see *Submission — 17 Oct 2026*). The release type is `AFTER_APPROVAL`, so the
+version goes live when it is approved.
 
 ---
 
