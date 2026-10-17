@@ -313,8 +313,9 @@ struct ItemDetailView: View {
     }
 
     func claimPack() {
-        guard store.isPro else { showPaywall = true; return }
-        do { shareFile = try ExportService().claimPackFile(for: item) } catch { exportError = error.localizedDescription }
+        // Free users get the same document, watermarked, so the value is visible before paying.
+        do { shareFile = try ExportService().claimPackFile(for: item, watermark: !store.isPro) }
+        catch { exportError = error.localizedDescription }
     }
 
     func delete() {

@@ -63,10 +63,11 @@ struct PaywallView: View {
     var features: some View {
         VStack(alignment: .leading, spacing: DS.Space.xl) {
             feature("infinity", "Unlimited items", "Go beyond the \(StoreManager.freeItemLimit)-item free limit.")
-            feature("doc.richtext", "Claim Pack PDF", "Receipt, serial and coverage in one file for any warranty claim.")
-            feature("tablecells", "CSV export", "Your whole inventory as a spreadsheet.")
+            feature("doc.richtext", "Claim Pack PDF", "Receipt, serial and coverage in one print-ready file, with no watermark.")
             feature("bell.badge", "Custom reminder timing", "Any lead time you like, your own reminder hour, and one-off reminders on any date.")
-            feature("wrench.and.screwdriver", "Service plans", "Reminders for maintenance and servicing.")
+            if SyncSettings.isAvailable {
+                feature("icloud", "iCloud sync", "The same inventory on your own devices, in your own private iCloud.")
+            }
         }
     }
 

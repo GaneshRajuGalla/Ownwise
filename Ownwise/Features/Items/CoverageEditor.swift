@@ -5,13 +5,11 @@ struct CoverageEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ReminderScheduler.self) private var reminder
     @Environment(\.dismiss) private var dismiss
-    @Environment(StoreManager.self) private var store
     let item: Item
     @State private var kind: CoverageKind = .returnWindow
     @State private var start: Date
     @State private var lengthText = "30"
     @State private var leads: [Int]?
-    @State private var showPaywall = false
 
     init(item: Item) {
         self.item = item
@@ -26,10 +24,6 @@ struct CoverageEditor: View {
                         ForEach(CoverageKind.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                     .accessibilityIdentifier(AXID.coverageKindPicker)
-                } footer: {
-                    if !store.canAddCoverage(kind) {
-                        Text("Service plans with maintenance reminders are part of Ownwise Pro.")
-                    }
                 }
                 Section {
                     DatePicker(kind == .servicePlan ? "Last serviced" : "Starts", selection: $start, displayedComponents: .date)
@@ -74,7 +68,6 @@ struct CoverageEditor: View {
                 // Presets differ per kind, so a carried-over choice would mislead.
                 leads = nil
             }
-            .sheet(isPresented: $showPaywall) { PaywallView() }
         }
     }
 
@@ -113,13 +106,16 @@ struct CoverageEditor: View {
     }
 
     func add() {
-        guard store.canAddCoverage(kind) else { showPaywall = true; return }
         guard let length else { return }
         let end = kind == .servicePlan ? Date.distantFuture : Self.endDate(kind: kind, start: start, length: length)
-        // Skip exact duplicates (same kind + end date) from double-taps.
-        let day = Calendar.current.startOfDay(for: end)
-        if kind != .servicePlan,
-           (item.coverages ?? []).contains(where: { $0.kind == kind && Calendar.current.startOfDay(for: $0.endDate) == day }) {
+        // Skip exact duplicates from double-taps. Service plans share `distantFuture` as their
+        // end date, so they are compared by interval instead of date (C3).
+        let duplicates = (item.coverages ?? []).contains { existing in
+            guard existing.kind == kind else { return false }
+            if kind == .servicePlan { return existing.serviceIntervalMonths == length }
+            return Calendar.current.startOfDay(for: existing.endDate) == Calendar.current.startOfDay(for: end)
+        }
+        if duplicates {
             dismiss()
             return
         }

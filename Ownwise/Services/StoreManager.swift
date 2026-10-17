@@ -12,7 +12,10 @@ import os
 @MainActor
 final class StoreManager {
     static let productID = "com.ownwise.Ownwise.pro"
-    static let freeItemLimit = 5
+
+    /// Free is a real library, not a demo: a dozen-plus items before the limit appears.
+    /// Pro is carried by the Claim Pack PDF, custom reminder timing and iCloud sync.
+    static let freeItemLimit = 15
     private static let log = Logger(subsystem: "com.ownwise.Ownwise", category: "StoreKit")
 
     enum PurchaseOutcome: Equatable, Sendable {
@@ -115,11 +118,6 @@ final class StoreManager {
 
     func canAddItem(count: Int) -> Bool {
         isPro || count < Self.freeItemLimit
-    }
-
-    /// Service plans are Pro; every other coverage kind is free.
-    func canAddCoverage(_ kind: CoverageKind) -> Bool {
-        isPro || kind != .servicePlan
     }
 
     /// Logs to the unified log (Console.app, category "StoreKit") and, in debug builds,

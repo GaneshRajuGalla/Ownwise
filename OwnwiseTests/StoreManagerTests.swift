@@ -11,20 +11,10 @@ struct StoreManagerTests {
     @Test("Free limit blocks the item after the limit; Pro unblocks")
     func freeLimit() {
         let free = StoreManager(forcePro: false)
-        #expect(free.canAddItem(count: 4) == true)
-        #expect(free.canAddItem(count: 5) == false)
+        #expect(free.canAddItem(count: StoreManager.freeItemLimit - 1) == true)
+        #expect(free.canAddItem(count: StoreManager.freeItemLimit) == false)
         let pro = StoreManager(forcePro: true)
         #expect(pro.canAddItem(count: 100) == true)
-    }
-
-    @Test("Service plans need Pro; other coverage kinds are free")
-    func coverageGate() {
-        let free = StoreManager(forcePro: false)
-        #expect(free.canAddCoverage(.servicePlan) == false)
-        for kind in CoverageKind.allCases where kind != .servicePlan {
-            #expect(free.canAddCoverage(kind) == true)
-        }
-        #expect(StoreManager(forcePro: true).canAddCoverage(.servicePlan) == true)
     }
 
     @Test("loadProduct fetches the Pro product from the StoreKit config")

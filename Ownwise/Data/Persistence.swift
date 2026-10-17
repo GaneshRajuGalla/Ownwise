@@ -12,17 +12,32 @@ enum Persistence {
     /// Where the unreadable store was moved to. The original file is preserved, never deleted.
     static var recoveredStoreFolder: URL?
 
+    /// True when iCloud was requested but could not be opened, so the local store was used.
+    static var didFallBackToLocalStore = false
+
     /// Opens the store. A store that cannot be read must never crash-loop the app: it is moved
     /// aside (with its `-shm`/`-wal` sidecars) and a fresh one is created in its place.
     static func makeContainer(inMemory: Bool = false) -> ModelContainer {
         let schema = Schema(versionedSchema: SchemaV2.self)
+        let cloud = cloudKitDatabase()
         let config = ModelConfiguration(schema: schema,
                                         isStoredInMemoryOnly: inMemory,
-                                        cloudKitDatabase: .none)
+                                        cloudKitDatabase: cloud.database)
         do {
             return try ModelContainer(for: schema, migrationPlan: MigrationPlan.self, configurations: config)
         } catch {
             log.error("ModelContainer failed to open: \(error, privacy: .public)")
+            // iCloud can be unavailable for reasons that have nothing to do with the store: no
+            // account signed in, the entitlement not provisioned yet, or no network. Retry the
+            // *same* store locally before assuming the store itself is damaged.
+            if !inMemory, cloud.enabled {
+                let local = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, cloudKitDatabase: .none)
+                if let container = try? ModelContainer(for: schema, migrationPlan: MigrationPlan.self, configurations: local) {
+                    log.notice("iCloud was unavailable, so the local store was opened instead.")
+                    didFallBackToLocalStore = true
+                    return container
+                }
+            }
             if !inMemory, let folder = setAside(storeAt: config.url) {
                 do {
                     let container = try ModelContainer(for: schema, migrationPlan: MigrationPlan.self, configurations: config)
@@ -35,6 +50,14 @@ enum Persistence {
             }
             return inMemoryFallback(schema: schema)
         }
+    }
+
+    /// The CloudKit database to open with, and whether CloudKit was actually requested.
+    private static func cloudKitDatabase() -> (database: ModelConfiguration.CloudKitDatabase, enabled: Bool) {
+        guard let identifier = SyncSettings.containerIdentifier, SyncSettings.isEnabled else {
+            return (.none, false)
+        }
+        return (.private(identifier), true)
     }
 
     /// Moves an unreadable store and its `-shm`/`-wal` sidecars into `Recovered/<timestamp>/`.

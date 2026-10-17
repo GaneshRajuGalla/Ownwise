@@ -16,13 +16,42 @@ final class ExportFlowUITests: XCTestCase {
         XCTAssertTrue(sheet.waitForExistence(timeout: 10) || app.otherElements["ActivityListView"].waitForExistence(timeout: 2))
     }
 
-    func testFreeUserExportOpensPaywall() throws {
+    /// Raw export and backups are free: a paywall between a user and their own data is exactly
+    /// what the app promises never to do.
+    func testFreeUserReachesCSVAndBackupWithoutAPaywall() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forceFree"])
         app.launch()
         openExport(app)
-        XCTAssertTrue(app.buttons[AXID.paywallRestoreButton].waitForExistence(timeout: 5))
-        app.buttons[AXID.paywallDismiss].tap()
-        XCTAssertFalse(app.buttons[AXID.exportCSVButton].waitForExistence(timeout: 2))
+
+        XCTAssertTrue(app.buttons[AXID.exportCSVButton].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons[AXID.exportBackupButton].exists)
+        XCTAssertTrue(app.buttons[AXID.exportRestoreButton].exists)
+        XCTAssertFalse(app.buttons[AXID.paywallRestoreButton].exists)
+
+        app.buttons[AXID.exportCSVButton].tap()
+        assertShareSheet(app)
+    }
+
+    func testFreeUserBackupProducesAFile() throws {
+        let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forceFree"])
+        app.launch()
+        openExport(app)
+
+        XCTAssertTrue(app.buttons[AXID.exportBackupButton].waitForExistence(timeout: 5))
+        app.buttons[AXID.exportBackupButton].tap()
+        assertShareSheet(app)
+    }
+
+    /// The Claim Pack is watermarked rather than blocked, so the payoff is visible before paying.
+    func testFreeUserClaimPackIsAPreviewNotADeadEnd() throws {
+        let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forceFree"])
+        app.launch()
+        openExport(app)
+
+        let claim = app.buttons[AXID.exportClaimPackButton].firstMatch
+        XCTAssertTrue(claim.waitForExistence(timeout: 5))
+        claim.tap()
+        assertShareSheet(app)
     }
 
     func testProCSVShareSheetAppears() throws {
@@ -44,6 +73,14 @@ final class ExportFlowUITests: XCTestCase {
         assertShareSheet(app)
     }
 
+    func testProSeesNoProBadgeInExport() throws {
+        let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forcePro"])
+        app.launch()
+        openExport(app)
+        XCTAssertTrue(app.buttons[AXID.exportCSVButton].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: AXID.proBadge).count, 0)
+    }
+
     func testItemDetailClaimPack() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forcePro"])
         app.launch()
@@ -56,7 +93,8 @@ final class ExportFlowUITests: XCTestCase {
         assertShareSheet(app)
     }
 
-    func testItemDetailClaimPackFreeShowsPaywall() throws {
+    /// The detail screen behaves like the Export screen: a preview, not the paywall.
+    func testItemDetailClaimPackForFreeUserIsAPreview() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forceFree"])
         app.launch()
         app.tabBars.buttons["Items"].tap()
@@ -65,6 +103,7 @@ final class ExportFlowUITests: XCTestCase {
         row.tap()
         XCTAssertTrue(app.buttons[AXID.itemClaimPackButton].waitForExistence(timeout: 5))
         app.buttons[AXID.itemClaimPackButton].tap()
-        XCTAssertTrue(app.buttons[AXID.paywallRestoreButton].waitForExistence(timeout: 5))
+        assertShareSheet(app)
+        XCTAssertFalse(app.buttons[AXID.paywallRestoreButton].exists)
     }
 }

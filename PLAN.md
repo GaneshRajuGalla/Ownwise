@@ -147,7 +147,7 @@ F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
 | Plan | written, revised against market evidence |
 | 0 — Plan | done |
 | 1 — Data safety | **done — awaiting the owner's build** |
-| 2 — Sync (`F3`) + trust (`A4`, `A5`) | queued — promoted on evidence |
+| 2 — Sync (`F3`) + trust (`A4`, `A5`) | **done in code; `F3` needs a capability step** |
 | 3 — Localisation & accessibility | not started |
 | 4 — Scan quality (+ barcode, promoted) | not started |
 | 5 — Structure & performance | not started |
@@ -181,4 +181,36 @@ Files: `Data/Persistence.swift`, `Data/ModelContext+Saving.swift` (new), `Servic
 Deliberately left for Phase 2 (they are the *user-facing* halves, not the safety halves):
 A1's "your data could not be opened" notice in Settings, A2's user-visible error alert, A4
 backup/restore, A5 free raw export.
+
+---
+
+## Phase 2 delivery log — 17 Oct 2026
+
+Closed: **A4, A5, C3, D1, D2, D3, D4**, the user-facing half of **A1**, and **F3** in code.
+
+| Gap | What changed | Test |
+|---|---|---|
+| A5 | Raw export and backups are free — `ExportView` no longer gates the CSV, the Settings row is unbadged, and `openExport()`/`exportAfterPurchase` are gone (H5). | `GatingUITests`, `ExportFlowUITests` |
+| A4 | New `BackupService`: a versioned JSON backup (`formatVersion`, items, coverages, attachments with their bytes) with **restore that replaces** rather than merges, so restoring twice cannot double a library. Export screen gained Backup / Restore rows; a foreign or newer-format file is refused instead of half-imported. | `BackupServiceTests` — full round-trip, foreign data refused, newer format refused, nil attachment bytes preserved |
+| D4 | Free users now get the *real* Claim Pack PDF, watermarked (`ClaimPackWatermark`), instead of a paywall — on both the Export screen and the item detail screen. Pro removes the mark. | `ExportFlowUITests` preview cases |
+| D1 | Service plans are no longer gated by coverage *kind*; `canAddCoverage` and its paywall path are deleted. | `GatingUITests.testFreeUserCanOpenTheCoverageEditorWithoutAPaywall` |
+| C3 | The duplicate-coverage guard now covers service plans too, comparing their interval instead of their `distantFuture` end date. | covered by the editor's existing behaviour |
+| D2 | `freeItemLimit` 5 → **15**. Pro value now rests on the Claim Pack, custom reminder timing and sync rather than a small free cap. One-line change if the pricing call goes the other way. | `StoreManagerTests.freeLimit` |
+| D3 | Store description rewritten for the current free tier (every coverage type, free CSV, free backup/restore, 15 items) with `warranty`/`maintenance`/`inventory` added to the keywords and the stale fixed "returns 3/1, warranties 30/7/1" copy removed. iCloud sync is deliberately **not** listed yet — describing a feature the App ID cannot deliver is a 2.3.1 risk. | — |
+| A1 | Settings shows a "Data recovery" section when `Persistence.didRecoverStore` is true, pointing at backup restore. | — |
+| F3 | `SyncSettings` reads an optional `OwnwiseICloudContainer` Info.plist key; `Persistence` opens `.private(container)` only when the build has one **and** the user opted in. With iCloud unavailable it retries the *same* store locally (`didFallBackToLocalStore`) before ever suspecting corruption. Settings → iCloud appears only when the build can honour it. | — |
+| H2 | `ClaimPackView` moved out of `Services/ExportService.swift` into `Features/Export/`. | — |
+
+**F3 needs one capability step before it does anything**: enable iCloud/CloudKit on the App ID,
+create the `iCloud.com.ownwise.Ownwise` container, add the entitlements file and the Info.plist
+key. `Docs/iCloud-sync.md` has the exact contents. Until then the app is local-only, which is
+also the state the privacy label describes.
+
+Files: `Services/{BackupService,SyncSettings}.swift` (new), `Services/ExportService.swift`,
+`Data/Persistence.swift`, `Features/Settings/{ExportView,SettingsView}.swift`,
+`Features/Export/ClaimPackView.swift` (new), `Features/Items/{CoverageEditor,ItemDetailView}.swift`,
+`Features/Paywall/PaywallView.swift`, `DesignSystem/Components/ClaimPackWatermark.swift` (new),
+`Support/AXID.swift`, `metadata/version/1.0/en-US.json`, `Docs/iCloud-sync.md` (new),
+3 test files + `OwnwiseUITests/GatingUITests.swift` (new).
+
 

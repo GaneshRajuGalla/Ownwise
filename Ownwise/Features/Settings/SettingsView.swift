@@ -10,9 +10,9 @@ struct SettingsView: View {
 
     @State private var showPaywall = false
     @State private var showExport = false
-    @State private var exportAfterPurchase = false
     @State private var showReminders = false
     @State private var remindersAfterPurchase = false
+    @State private var showSyncNotice = false
 
     var body: some View {
         NavigationStack {
@@ -51,9 +51,34 @@ struct SettingsView: View {
                     }
                 }
                 Section("Data") {
-                    Button { openExport() } label: { proRow("Export") }
+                    Button("Export & backup") { showExport = true }
                         .accessibilityIdentifier(AXID.settingsExportButton)
                     NavigationLink("Privacy") { PrivacyView() }
+                }
+                if SyncSettings.isAvailable {
+                    Section {
+                        Toggle("Sync with iCloud", isOn: Binding(get: { SyncSettings.isEnabled },
+                                                                  set: { on in
+                                                                      SyncSettings.isEnabled = on
+                                                                      showSyncNotice = true
+                                                                  }))
+                            .accessibilityIdentifier(AXID.settingsSyncToggle)
+                    } header: {
+                        Text("iCloud")
+                    } footer: {
+                        Text("Your own private iCloud database — never our servers. Reopen Ownwise to apply. Receipts and photos count toward your iCloud storage.")
+                    }
+                }
+                if Persistence.didRecoverStore {
+                    Section {
+                        Label("Ownwise couldn't open your saved data, so it started an empty library.",
+                              systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.secondary)
+                    } header: {
+                        Text("Data recovery")
+                    } footer: {
+                        Text("The old file was kept, not deleted. Use Export & backup to restore your items.")
+                    }
                 }
                 Section("About") {
                     LabeledContent("Version", value: appVersion)
@@ -65,12 +90,15 @@ struct SettingsView: View {
             .navigationDestination(isPresented: $showReminders) { ReminderSettingsView() }
             .sheet(isPresented: $showPaywall, onDismiss: {
                 if store.isPro {
-                    if exportAfterPurchase { showExport = true }
                     if remindersAfterPurchase { showReminders = true }
                 }
-                exportAfterPurchase = false
                 remindersAfterPurchase = false
             }) { PaywallView() }
+            .alert("Sync setting saved", isPresented: $showSyncNotice) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Close and reopen Ownwise to apply this change.")
+            }
         }
     }
 
@@ -106,16 +134,6 @@ struct SettingsView: View {
             showReminders = true
         } else {
             remindersAfterPurchase = true
-            showPaywall = true
-        }
-    }
-
-    /// Export is Pro-only: free users see the paywall, then land on Export if they buy.
-    private func openExport() {
-        if store.isPro {
-            showExport = true
-        } else {
-            exportAfterPurchase = true
             showPaywall = true
         }
     }
