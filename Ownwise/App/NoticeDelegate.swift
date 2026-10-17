@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import UserNotifications
+import SwiftData
 
 /// The app delegate, which exists only for notifications (B4).
 ///

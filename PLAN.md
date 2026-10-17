@@ -323,6 +323,39 @@ If you want either of them, say which and I will do the code half immediately: f
 filling the catalogue and reading it back for consistency, for F1 flipping the flag and listing exactly
 what to look at on the iPad.
 
+## Release readiness — checked 17 Oct 2026
+
+Verified through `asc` against the live App Store Connect record, not from memory:
+
+| Check | State |
+|---|---|
+| Version 1.0 | `PREPARE_FOR_SUBMISSION`; `asc validate` → **0 errors, 0 blocking** |
+| IAP `com.ownwise.Ownwise.pro` | **READY_TO_SUBMIT** — the paid-agreements blocker that made StoreKit return "no product" has cleared |
+| iPhone screenshots | Present. No iPad set is required: `TARGETED_DEVICE_FAMILY = 1`, so the app does not run on iPad (and `PLAN.md`'s Phase 10 table explains why flipping that is an owner decision) |
+| Encryption | `ITSAppUsesNonExemptEncryption = NO` → the build arrives "exempt", no export-compliance prompt |
+| Uploaded builds | 1, 2 and 3 — **all from 11 Oct, i.e. before every change in Phases 1–10**. Nothing from this work is on Apple's servers yet |
+| Build number | was **2**, which is already used; project bumped to **4** so the next archive is accepted |
+
+**Fixed this pass:** the store listing was stale — the 3 Oct metadata apply had failed wholesale
+(`whatsNew cannot be edited` on a first version), leaving a description that advertised *"Unlimited
+items (free up to 5)"* and *"CSV export"* as **Pro**, both the opposite of what the app now does. It
+has been applied and read back: the ASC description, keywords and promotional text now match
+`metadata/version/1.0/en-US.json` exactly.
+
+**Still to do, in order:**
+
+1. Archive and upload a build (the project is now on build 4) and wait for `VALID`.
+2. Attach it to 1.0 and submit the version **and** the IAP in the same review submission — the IAP
+   sells nothing on its own, and `asc review submit` only attaches the app version:
+   `versions attach-build` → `review submissions-create` → `review items-add --item-type appStoreVersions`
+   → `review items-add --item-type inAppPurchaseVersions --item-id d55070a2-e793-4cc1-903a-de704f3f092f`
+   → `review submissions-submit`. The IAP *version* currently reads `DEVELOPER_REJECTED`, so if the API
+   refuses to re-add it, it needs one click in App Store Connect (the IAP page → submit with 1.0).
+3. Confirm App Privacy is still published (the public API cannot read publish state — the one blocker
+   `asc validate` explicitly could not check).
+
+
+
 ## Awaiting the owner's decision
 
 - **F3** iCloud sync: still your call to *start*, but the evidence is now clear that it is the

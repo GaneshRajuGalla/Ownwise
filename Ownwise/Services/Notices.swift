@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import SwiftData
 
 /// The notification categories and the action that can be taken from one (B4).
 ///
