@@ -97,4 +97,59 @@ struct ExportServiceTests {
     func emptyWriteThrows() {
         #expect(throws: (any Error).self) { try ExportService().write(Data(), named: "x.csv") }
     }
+
+    @Test("A resale pack is the same facts under its own name (E9)")
+    func resalePack() throws {
+        let item = Item(name: "Kettle")
+        item.serialNumber = "SN-1234"
+
+        #expect(ExportService().claimPackFileName(for: item, kind: .handover) == "Resale Pack - Kettle.pdf")
+        let doc = try #require(PDFDocument(data: ExportService().makeClaimPackPDF(item: item, kind: .handover)))
+        let text = doc.string ?? ""
+        #expect(text.contains("Resale Pack"))
+        #expect(text.contains("SN-1234"), "a buyer gets the serial number")
+        #expect(text.contains("Proof of purchase"), "and is told what the document is for")
+    }
+
+    @Test("Inventory report: one page of totals, then a page per chunk of items (E4)")
+    func inventoryReportPaginates() throws {
+        let items = (0..<45).map { index -> Item in
+            let item = Item(name: "Item \(index)")
+            item.priceMinor = 1000
+            return item
+        }
+
+        let doc = try #require(PDFDocument(data: ExportService().makeInventoryReportPDF(items: items)))
+
+        // 45 rows at 20 a page: the first page (totals) plus three item pages.
+        #expect(doc.pageCount == 4)
+        #expect((doc.page(at: 0)?.string ?? "").contains("45 items"))
+        #expect((doc.page(at: 1)?.string ?? "").contains("Items 1 of 3"))
+        #expect((doc.page(at: 3)?.string ?? "").contains("Items 3 of 3"))
+        // Nothing is silently dropped: every item appears somewhere.
+        let all = (0..<doc.pageCount).compactMap { doc.page(at: $0)?.string }.joined()
+        for index in [0, 20, 44] {
+            #expect(all.contains("Item \(index)"))
+        }
+    }
+
+    @Test("Inventory report names a file after its date and never mixes currencies (E4, E10)")
+    func inventoryReportFile() throws {
+        let now = ISO8601DateFormatter().date(from: "2026-03-04T12:00:00Z")!
+        let usd = Item(name: "TV"); usd.priceMinor = 129_950; usd.currencyCode = "USD"
+        let eur = Item(name: "Kettle"); eur.priceMinor = 4_999; eur.currencyCode = "EUR"
+
+        let svc = ExportService(now: now)
+        let file = try svc.inventoryReportFile(items: [usd, eur])
+        #expect(file.url.lastPathComponent == "Ownwise Inventory 2026-03-04.pdf")
+
+        let text = try #require(PDFDocument(data: svc.makeInventoryReportPDF(items: [usd, eur])).page(at: 0)?.string)
+        #expect(text.contains("Recorded value"))
+        // Two currencies means two subtotals, each formatted by the same `Money` the app uses.
+        #expect(text.contains(Money.formatted(129_950, currencyCode: "USD")))
+        #expect(text.contains(Money.formatted(4_999, currencyCode: "EUR")))
+        // …and never the sum of two currencies, which would be a wrong number in a document someone
+        // hands to an insurer.
+        #expect(!text.contains(Money.formatted(134_949, currencyCode: "USD")))
+    }
 }

@@ -262,6 +262,41 @@ E4 inventory value for insurance · E5 barcode/serial scanning · E6 service log
 "expiring soon" · E8 claim-status tracking · E9 resale pack · E10 multi-currency totals ·
 E11 bulk actions.
 
+### Phase 9 delivery log — 17 Oct 2026
+
+Five of the eight are done. All five reuse what already exists — no new model, no new capability — so
+none of them can put the store that phases 1–8 depend on at risk. The three that need a **schema V3**
+or a multi-select rewrite of the item list are written up below with the design, deliberately not
+rushed into the same build as five unverified phases.
+
+| Gap | What changed |
+|---|---|
+| E5 | `BarcodeService` reads a serial off the same pages the OCR reads, running beside it (both pages of work are already concurrent). **Product barcodes are excluded on purpose** — an EAN/UPC identifies a model, not the item in your hand, so putting one in the serial field would be a confident lie — and the free-form symbologies a manufacturer actually prints a serial in are read. `ScanPipeline.draft(fromText:scannedSerial:)` fixes the precedence in one place: a printed "S/N:" beats a barcode, a barcode beats the AI's guess. |
+| E4 + E10 | `InventorySummary` + `InventoryReportView` + `ExportService.makeInventoryReportPDF`/`inventoryReportFile`: a dated inventory for insurance or a move — totals, then per-category subtotals, then the items — from Export. **Currencies are never added together**: a single number mixing 200 EUR and 300 USD is worse than no number, because it looks as authoritative as the right one, so totals are per currency throughout and nothing is sorted by price. The item list is paginated (20 rows a page) so a long library is not silently clipped. Free, like the CSV and the backup: it is the user's own data and an insurer is not a store. |
+| E9 | `PackKind` + a title and purpose line on `ClaimPackView`. The resale pack is the *same* facts page — serial, purchase date, cover left, the receipt pages — under its own name (`Resale Pack - Kettle.pdf`) with a line saying what a buyer is getting, rather than a second document that would drift from the first. |
+| E7 | `LibraryPreferences` + a picker in Settings (1 week · 2 weeks · 1 month · 2 months · 3 months). The horizon is read from `UserDefaults` where the question is asked rather than handed down the hierarchy, because the free functions that decide it (`coverageStatus`, `overallStatus`) have no environment — one setting, one answer, so the item badge, Home's chips and the widget's snapshot cannot disagree. The stored value is validated: anything not one of the offered horizons reads as 30 days instead of silently changing what every badge in the app means. |
+| — | `ExportService.renderPDF` is now the one place a document is rendered, shared by the claim pack and the inventory report, so paper size, colour scheme and the watermark rule cannot drift between them. |
+
+Tests: `BarcodeServiceTests` (a generated Code 128 and a QR read back exactly; a page with no barcode
+reads as nothing rather than failing; the product symbologies asserted *absent* from the list, which is
+the design rule), a `ScanPipelineTests` case proving a barcode image reaches the serial field through
+the full camera path and that a printed serial still wins, `InventorySummaryTests` (per-currency
+totals, zero-versus-missing price, category subtotals accounting for the same money, pagination never
+dropping an item), `ExportServiceTests` additions (the resale pack's name and framing; the inventory
+report's page count, contents and per-currency text with no mixed total anywhere) and
+`LibraryPreferencesTests` (validation, the horizon reaching both `coverageStatus` and the item's
+overall badge, and the week/month labels). The stored-horizon test deliberately goes through the pure
+validator instead of writing to `UserDefaults`, so it cannot change what the other tests see — the same
+reason it is not exercised end to end.
+
+### Deliberately not done yet, with the design
+
+| Gap | Why not in this build | The design, ready to execute |
+|---|---|---|
+| E6 service log | Needs a new model, which means **schema V3** and a migration — the one kind of change that can lose an existing user's library. Stacking that on five phases the owner has not yet built is the wrong trade. | `ServiceRecord` (date, cost, notes, optional receipt attachment) + an optional to-many from `Item`, in a `SchemaV3` that also carries E8, with a `MigrationPlan` and the lightweight stage H1's checklist describes. Properties optional or defaulted, relationships optional, no unique constraint — the CloudKit rules the schema must keep. Then a `ServiceLogSection` in `ItemDetailView` and `LibraryActions.addServiceRecord`/`delete` (the mutation rule H3 established). |
+| E8 claim status | Same V3 migration, and it is a *status machine* (submitted → approved → paid) that only earns its keep with history alongside it — which is E6's model. | `claimStatus` (raw string, defaulted) + `claimUpdatedAt`/`claimNote` on `Item`, set from a menu in `ItemDetailView`, plus a filter chip in `ItemsView` and a `LibrarySearch` status case. Land it in the **same** V3 as E6 so there is one migration, not two. |
+| E11 bulk actions | Needs multi-select in `ItemsView` (edit mode, selection state, a destructive toolbar action with confirmation) — a rewrite of the most-used screen, and the one place a mistake deletes somebody's library. Worth doing deliberately, after the current build is known good. | `@State selection: Set<PersistentIdentifier>` + `EditButton`, a toolbar with delete (existing confirmation pattern) and "Move to category", reusing `LibraryActions.delete` per item and one `saveOrReport` at the end rather than a save per item. Free, and no confirmation for an empty selection. |
+
 ## Phase 10 — Reach
 
 F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
@@ -283,12 +318,12 @@ F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
 | 1 — Data safety | **done — awaiting the owner's build** |
 | 2 — Sync (`F3`) + trust (`A4`, `A5`) | **done in code; `F3` needs a capability step** |
 | 3 — Localisation & accessibility | **done — awaiting the owner's build** |
-| 4 — Scan quality (+ barcode, promoted) | **done — awaiting the owner's build** |
+| 4 — Scan quality | **done — awaiting the owner's build** |
 | 5 — Structure & performance | **done — awaiting the owner's build** |
 | 6 — Test integrity | **done — awaiting the owner's build** |
 | 7 — Share Sheet import (`E1`) | **done in code; the extension target + App Group are the owner's step** |
 | 8 — Widgets + App Intents (`E2`, `E3`, `B4`) | **`E3` and `B4` done; the `E2` widget target + App Group are the owner's step** |
-| 9 — Value features (`E6`–`E11`) | not started |
+| 9 — Value features (`E4`, `E5`, `E7`, `E9`, `E10`) | **done; `E6`, `E8` (schema V3) and `E11` (multi-select) designed and deferred** |
 | 10 — Reach (`F1` iPad-compatible, `F2`) | not started |
 
 ---

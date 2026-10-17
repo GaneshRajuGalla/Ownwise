@@ -225,10 +225,14 @@ struct ItemDetailView: View {
                     .buttonStyle(.glass)
                     .accessibilityLabel("Add coverage")
                     .accessibilityIdentifier(AXID.addCoverageButton)
-                Button { claimPack() } label: { Label("Claim Pack", systemImage: "doc.richtext").labelStyle(.iconOnly) }
+                Button { exportPack(.claim) } label: { Label("Claim Pack", systemImage: "doc.richtext").labelStyle(.iconOnly) }
                     .buttonStyle(.glass)
                     .accessibilityLabel("Claim Pack")
                     .accessibilityIdentifier(AXID.itemClaimPackButton)
+                Button { exportPack(.handover) } label: { Label("Resale Pack", systemImage: "tag").labelStyle(.iconOnly) }
+                    .buttonStyle(.glass)
+                    .accessibilityLabel("Resale Pack")
+                    .accessibilityIdentifier(AXID.itemResalePackButton)
             }
             .font(.title3)
         }
@@ -311,9 +315,9 @@ struct ItemDetailView: View {
         UIApplication.shared.open(url)
     }
 
-    func claimPack() {
+    func exportPack(_ kind: PackKind) {
         // Free users get the same document, watermarked, so the value is visible before paying.
-        do { shareFile = try ExportService().claimPackFile(for: item, watermark: !store.isPro) }
+        do { shareFile = try ExportService().claimPackFile(for: item, kind: kind, watermark: !store.isPro) }
         catch { exportError = error.localizedDescription }
     }
 

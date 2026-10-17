@@ -2,18 +2,25 @@ import SwiftUI
 
 /// The facts page of a Claim Pack: everything a store or manufacturer asks for in one place.
 /// Rendered to PDF by `ExportService`.
+///
+/// The same page serves the resale pack (E9) — the facts a buyer wants are the same ones — with a
+/// different title and one line saying what the document is for.
 struct ClaimPackView: View {
     let item: Item
     let service: ExportService
     let imageCount: Int
+    var kind: PackKind = .claim
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Claim Pack").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text(kind.title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Text(item.name).font(.largeTitle.bold())
                 let subtitle = [item.brand, item.modelNumber].filter { !$0.isEmpty }.joined(separator: " · ")
                 if !subtitle.isEmpty { Text(subtitle).font(.title3).foregroundStyle(.secondary) }
+                if let purpose = kind.purpose {
+                    Text(purpose).font(.subheadline).foregroundStyle(.secondary)
+                }
             }
 
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {

@@ -14,6 +14,10 @@ struct SettingsView: View {
     @State private var remindersAfterPurchase = false
     @State private var showSyncNotice = false
 
+    /// The horizon behind every "expiring soon" badge (E7). Written here; read by
+    /// `LibraryPreferences.soonDays` wherever the question is asked.
+    @AppStorage(LibraryPreferences.key) private var soonDays = LibraryPreferences.defaultSoonDays
+
     var body: some View {
         NavigationStack {
             List {
@@ -25,6 +29,12 @@ struct SettingsView: View {
                 Section {
                     Button { openReminders() } label: { proRow("Customize reminders") }
                         .accessibilityIdentifier(AXID.settingsRemindersButton)
+                    Picker("Expiring soon means", selection: $soonDays) {
+                        ForEach(LibraryPreferences.soonDayOptions, id: \.self) { days in
+                            Text(LibraryPreferences.label(for: days)).tag(days)
+                        }
+                    }
+                    .accessibilityIdentifier(AXID.settingsSoonDaysPicker)
                     if notificationsDenied {
                         Button { openNotificationSettings() } label: {
                             Label("Turn on notifications", systemImage: "bell.badge")

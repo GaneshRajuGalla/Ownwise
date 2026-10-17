@@ -63,15 +63,21 @@ enum CoverageStatus: Sendable, Equatable {
 /// The one status to show for an item: the most urgent live coverage.
 /// "Expired" only when nothing is still covered (an ended return window doesn't
 /// make an item with an active warranty look expired).
-func overallStatus(of coverages: [Coverage], now: Date, calendar: Calendar = .current) -> CoverageStatus? {
+func overallStatus(of coverages: [Coverage], now: Date,
+                   soonDays: Int = LibraryPreferences.soonDays,
+                   calendar: Calendar = .current) -> CoverageStatus? {
     func rank(_ s: CoverageStatus) -> Int {
         switch s { case .serviceDue: 0; case .expiringSoon: 1; case .active: 2; case .expired: 3 }
     }
-    return coverages.map { coverageStatus(of: $0, now: now, calendar: calendar) }.min { rank($0) < rank($1) }
+    return coverages.map { coverageStatus(of: $0, now: now, soonDays: soonDays, calendar: calendar) }
+        .min { rank($0) < rank($1) }
 }
 
 /// Pure status logic (unit-tested). Service-due takes precedence for service plans.
-func coverageStatus(of c: Coverage, now: Date, soonDays: Int = 30, calendar: Calendar = .current) -> CoverageStatus {
+/// `soonDays` defaults to the user's chosen horizon (E7).
+func coverageStatus(of c: Coverage, now: Date,
+                    soonDays: Int = LibraryPreferences.soonDays,
+                    calendar: Calendar = .current) -> CoverageStatus {
     if c.kind == .servicePlan, let next = c.nextServiceDate {
         if next <= now { return .serviceDue }
         return .active

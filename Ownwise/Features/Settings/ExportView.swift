@@ -24,6 +24,7 @@ struct ExportView: View {
         List {
             backupSection
             spreadsheetSection
+            inventorySection
             claimPackSection
         }
         .navigationTitle("Export")
@@ -88,6 +89,20 @@ struct ExportView: View {
             Text("Spreadsheet")
         } footer: {
             Text("One row per item with brand, store, purchase date, price, serial and order number. Opens in Numbers, Excel or Google Sheets.")
+        }
+    }
+
+    private var inventorySection: some View {
+        Section {
+            Button { export { try ExportService().inventoryReportFile(items: items) } } label: {
+                Label("Inventory report (PDF)", systemImage: "list.bullet.rectangle")
+            }
+            .disabled(items.isEmpty)
+            .accessibilityIdentifier(AXID.exportInventoryReportButton)
+        } header: {
+            Text("Inventory")
+        } footer: {
+            Text("A dated list of what you own and what you paid, for insurance or a move. Totals are shown per currency, never added together.")
         }
     }
 

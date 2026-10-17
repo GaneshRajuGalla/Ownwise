@@ -62,11 +62,11 @@ struct ExportService {
         return days < 0 ? String(localized: "Expired") : String(localized: "\(days) days left")
     }
 
-    func claimPackFileName(for item: Item) -> String {
+    func claimPackFileName(for item: Item, kind: PackKind = .claim) -> String {
         let unsafe = CharacterSet(charactersIn: "/\\:?*|<>\"").union(.newlines)
         let name = item.name.components(separatedBy: unsafe).joined(separator: " ")
             .trimmingCharacters(in: .whitespaces)
-        return "Claim Pack - \(name.isEmpty ? "Item" : name).pdf"
+        return "\(kind.fileLabel) - \(name.isEmpty ? "Item" : name).pdf"
     }
 
     /// Images to append after the facts page: receipts and warranty cards first.
@@ -88,20 +88,57 @@ struct ExportService {
 
     /// Claim Pack PDF for one item: a vector facts page, then one page per receipt/warranty image.
     /// `watermark` produces the free preview — the same document, marked, so the finished one can
-    /// be seen before paying.
+    /// be seen before paying. A resale pack is the same document with a different title (E9).
     @MainActor
-    func makeClaimPackPDF(item: Item, watermark: Bool = false) -> Data {
-        let size = paperSize()
+    func makeClaimPackPDF(item: Item, kind: PackKind = .claim, watermark: Bool = false) -> Data {
+        let images = attachmentImages(of: item)
+        var pages: [AnyView] = [AnyView(ClaimPackView(item: item, service: self,
+                                                      imageCount: images.count, kind: kind))]
+        pages += images.enumerated().map { index, entry in
+            AnyView(attachmentPage(item: item, kind: entry.kind, image: entry.image, page: index + 2, of: images.count + 1))
+        }
+        return renderPDF(pages: pages, size: paperSize(), watermark: watermark)
+    }
+
+    @MainActor
+    func claimPackFile(for item: Item, kind: PackKind = .claim, watermark: Bool = false) throws -> ExportFile {
+        try write(makeClaimPackPDF(item: item, kind: kind, watermark: watermark),
+                  named: claimPackFileName(for: item, kind: kind))
+    }
+
+    // MARK: Inventory report (E4)
+
+    /// How many item rows fit on a page of the inventory report before the next one starts.
+    static let inventoryRowsPerPage = 20
+
+    /// A dated inventory of the library: totals per currency, then the items themselves. Free, like
+    /// the raw export and the backup — it is the user's own data, and an insurer is not a store.
+    @MainActor
+    func makeInventoryReportPDF(items: [Item]) -> Data {
+        let summary = InventorySummary.summarize(items)
+        var pages: [AnyView] = [AnyView(InventoryReportView(summary: summary, service: self))]
+        let chunks = InventorySummary.chunked(summary.lines, perPage: Self.inventoryRowsPerPage)
+        pages += chunks.enumerated().map { index, chunk in
+            AnyView(InventoryItemsPageView(lines: chunk, page: index + 1, of: chunks.count))
+        }
+        return renderPDF(pages: pages, size: paperSize(), watermark: false)
+    }
+
+    @MainActor
+    func inventoryReportFile(items: [Item]) throws -> ExportFile {
+        let label = String(localized: "Ownwise Inventory", comment: "Inventory report file name")
+        let date = now.formatted(.iso8601.year().month().day())
+        return try write(makeInventoryReportPDF(items: items), named: "\(label) \(date).pdf")
+    }
+
+    /// Renders SwiftUI pages into a PDF, one page each: the one place both documents are made, so the
+    /// paper size, colour scheme and watermark rule cannot drift apart.
+    @MainActor
+    private func renderPDF(pages: [AnyView], size: CGSize, watermark: Bool) -> Data {
         let data = NSMutableData()
         var box = CGRect(origin: .zero, size: size)
         guard let consumer = CGDataConsumer(data: data as CFMutableData),
               let pdf = CGContext(consumer: consumer, mediaBox: &box, nil) else { return Data() }
-
-        let images = attachmentImages(of: item)
-        var pages: [AnyView] = [AnyView(ClaimPackView(item: item, service: self, imageCount: images.count))]
-        pages += images.enumerated().map { index, entry in
-            AnyView(attachmentPage(item: item, kind: entry.kind, image: entry.image, page: index + 2, of: images.count + 1))
-        }
 
         for page in pages {
             let renderer = ImageRenderer(content: page
@@ -117,11 +154,6 @@ struct ExportService {
         }
         pdf.closePDF()
         return data as Data
-    }
-
-    @MainActor
-    func claimPackFile(for item: Item, watermark: Bool = false) throws -> ExportFile {
-        try write(makeClaimPackPDF(item: item, watermark: watermark), named: claimPackFileName(for: item))
     }
 
     private func attachmentPage(item: Item, kind: AttachmentKind, image: UIImage, page: Int, of total: Int) -> some View {

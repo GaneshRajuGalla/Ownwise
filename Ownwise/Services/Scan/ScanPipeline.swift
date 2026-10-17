@@ -10,16 +10,24 @@ import UIKit
 struct ScanPipeline: Sendable {
     var ocr: OCRService = OCRService()
     var parser: ReceiptParser = ReceiptParser()
+    var barcodes: BarcodeService = BarcodeService()
     var ai: AIExtractor = AIExtractor()
 
     nonisolated func run(images: [UIImage]) async -> ExtractionDraft {
         let pageImages = images.compactMap(\.cgImage)
-        // OCR all pages concurrently, then put them back in page order for the parser.
-        let texts = await orderedConcurrentMap(pageImages) { img in
+        // OCR and barcode reading are independent of each other, so they run side by side; each puts
+        // its pages back in order (C1).
+        async let texts = orderedConcurrentMap(pageImages) { img in
             (try? await self.ocr.recognize(img).text) ?? ""
         }
-        let joined = texts.joined(separator: "\n")
-        var draft = await draft(fromText: joined)
+        async let codes = orderedConcurrentMap(pageImages) { img in
+            (try? self.barcodes.read(img)) ?? []
+        }
+        let joined = (await texts).joined(separator: "\n")
+        // The first barcode on the first page that has one (E5).
+        let scannedSerial = (await codes).flatMap { $0 }.first
+
+        var draft = await draft(fromText: joined, scannedSerial: scannedSerial)
         // Compressing the pages is part of the heavy work, so it belongs off the main actor too.
         draft.pageImages = images.compactMap { $0.jpegData(compressionQuality: 0.7) }
         return draft
@@ -28,13 +36,17 @@ struct ScanPipeline: Sendable {
     /// The parse-and-fill half of the pipeline, for text that is already in hand: OCR output from a
     /// scan, or the text a share extension handed over (E1). Kept in one place so both paths read a
     /// receipt the same way.
-    nonisolated func draft(fromText text: String) async -> ExtractionDraft {
+    ///
+    /// - Parameter scannedSerial: a barcode's payload, used when the text did not state a serial. A
+    ///   printed "S/N: ..." is the better evidence; a scanned barcode beats the AI's guess, which is
+    ///   why it is applied before the merge below.
+    nonisolated func draft(fromText text: String, scannedSerial: String? = nil) async -> ExtractionDraft {
         let parsed = parser.parse(text)
         var draft = ExtractionDraft(
             merchant: parsed.merchant ?? "",
             brand: "",
             modelNumber: "",
-            serialNumber: parsed.serialNumber ?? "",
+            serialNumber: parsed.serialNumber ?? scannedSerial ?? "",
             category: .other,
             purchaseDate: parsed.purchaseDate,
             totalMinor: parsed.totalMinor,
