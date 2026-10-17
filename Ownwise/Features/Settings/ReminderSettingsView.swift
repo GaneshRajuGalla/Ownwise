@@ -17,7 +17,7 @@ struct ReminderSettingsView: View {
                 DatePicker("Remind me at", selection: timeBinding, displayedComponents: .hourAndMinute)
                     .accessibilityIdentifier(AXID.reminderTimePicker)
             } footer: {
-                Text("Applies to all coverage reminders.")
+                Text("Applies to every reminder, including ones you set for a single item.")
             }
 
             Section {
@@ -27,6 +27,8 @@ struct ReminderSettingsView: View {
                 addCustomButton(.returns)
             } header: {
                 Text("Return windows")
+            } footer: {
+                Text("These are the defaults. Every item can use its own timing.")
             }
 
             Section {
@@ -37,7 +39,7 @@ struct ReminderSettingsView: View {
             } header: {
                 Text("Warranties & insurance")
             } footer: {
-                Text("Service plans remind you on the day service is due. Add a one-off reminder from any item.")
+                Text("Service plans remind you when service is due — change a single item if you want longer notice.")
             }
 
             Section {
@@ -92,8 +94,8 @@ struct ReminderSettingsView: View {
         guard let target = customTarget,
               let days = ReminderPreferences.validLead(customDaysText) else { return }
         switch target {
-        case .returns: if !prefs.returnLeads.contains(days) { prefs.returnLeads.append(days) }
-        case .warranties: if !prefs.warrantyLeads.contains(days) { prefs.warrantyLeads.append(days) }
+        case .returns: prefs.returnLeads = ReminderPreferences.adding(days, to: prefs.returnLeads)
+        case .warranties: prefs.warrantyLeads = ReminderPreferences.adding(days, to: prefs.warrantyLeads)
         }
         customTarget = nil
     }
@@ -101,7 +103,8 @@ struct ReminderSettingsView: View {
     private func leadRow(_ days: Int, selected: Binding<[Int]>) -> some View {
         let isOn = selected.wrappedValue.contains(days)
         return Button {
-            if isOn { selected.wrappedValue.removeAll { $0 == days } } else { selected.wrappedValue.append(days) }
+            // Same ceiling rule as the per-item chips, in one tested place.
+            selected.wrappedValue = ReminderPreferences.togglingGlobal(days, in: selected.wrappedValue)
         } label: {
             HStack {
                 Text(ReminderPreferences.leadLabel(days)).foregroundStyle(Color.primary)

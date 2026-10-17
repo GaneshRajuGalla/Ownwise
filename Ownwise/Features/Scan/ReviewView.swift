@@ -3,6 +3,7 @@ import SwiftData
 
 struct ReviewView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(ReminderScheduler.self) private var reminder
     @State var model: ReviewModel
     @State private var didSave = false
     var onSaved: () -> Void
@@ -30,6 +31,21 @@ struct ReviewView: View {
                 TextField("Warranty (months)", text: $model.warrantyMonthsText).keyboardType(.numberPad)
                 TextField("Return window (days)", text: $model.returnDaysText).keyboardType(.numberPad)
             }
+            if model.returnDays > 0 || model.warrantyMonths > 0 {
+                Section {
+                    if model.returnDays > 0 {
+                        reminderRow("Return window", kind: .returnWindow, leads: $model.returnLeads)
+                    }
+                    if model.warrantyMonths > 0 {
+                        reminderRow("Warranty", kind: .manufacturer, leads: $model.warrantyLeads)
+                    }
+                } header: {
+                    Text("Remind me")
+                } footer: {
+                    Text("Choose when we should alert you. You can change this later from the item.")
+                }
+                .accessibilityIdentifier(AXID.itemReminderSection)
+            }
             if !model.fieldsFromAI.isEmpty {
                 Section {
                     Label("Some fields were filled in by on-device AI. Please check them before saving.", systemImage: "sparkles")
@@ -41,6 +57,9 @@ struct ReviewView: View {
                     guard !didSave else { return }
                     didSave = true
                     model.save(into: modelContext)
+                    // Scanned items used to wait for the next launch before their
+                    // reminders existed; schedule them the moment they're saved.
+                    Task { await reminder.rescheduleFromContext(modelContext) }
                     onSaved()
                 }
                 .disabled(didSave)
@@ -48,5 +67,14 @@ struct ReviewView: View {
             }
         }
         .navigationTitle("Review")
+    }
+
+    /// A titled chip row for one coverage kind.
+    private func reminderRow(_ title: LocalizedStringKey, kind: CoverageKind, leads: Binding<[Int]?>) -> some View {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
+            Text(title).font(.subheadline.weight(.semibold))
+            ReminderPresetPicker(kind: kind, leads: leads)
+        }
+        .padding(.vertical, DS.Space.xs)
     }
 }

@@ -1,14 +1,71 @@
 import SwiftData
 import Foundation
+import OSLog
 
 enum Persistence {
+    private static let log = Logger(subsystem: "com.ownwise.Ownwise", category: "Persistence")
+
+    /// True when the on-disk store could not be opened and was moved aside, so the app could
+    /// start. Settings reads this to tell the user instead of pretending their data is intact.
+    static var didRecoverStore = false
+
+    /// Where the unreadable store was moved to. The original file is preserved, never deleted.
+    static var recoveredStoreFolder: URL?
+
+    /// Opens the store. A store that cannot be read must never crash-loop the app: it is moved
+    /// aside (with its `-shm`/`-wal` sidecars) and a fresh one is created in its place.
     static func makeContainer(inMemory: Bool = false) -> ModelContainer {
-        let schema = Schema(versionedSchema: SchemaV1.self)
+        let schema = Schema(versionedSchema: SchemaV2.self)
         let config = ModelConfiguration(schema: schema,
                                         isStoredInMemoryOnly: inMemory,
                                         cloudKitDatabase: .none)
-        do { return try ModelContainer(for: schema, migrationPlan: MigrationPlan.self, configurations: config) }
-        catch { fatalError("ModelContainer failed: \(error)") }
+        do {
+            return try ModelContainer(for: schema, migrationPlan: MigrationPlan.self, configurations: config)
+        } catch {
+            log.error("ModelContainer failed to open: \(error, privacy: .public)")
+            if !inMemory, let folder = setAside(storeAt: config.url) {
+                do {
+                    let container = try ModelContainer(for: schema, migrationPlan: MigrationPlan.self, configurations: config)
+                    didRecoverStore = true
+                    recoveredStoreFolder = folder
+                    return container
+                } catch {
+                    log.error("A rebuilt container still failed to open: \(error, privacy: .public)")
+                }
+            }
+            return inMemoryFallback(schema: schema)
+        }
+    }
+
+    /// Moves an unreadable store and its `-shm`/`-wal` sidecars into `Recovered/<timestamp>/`.
+    /// Returns the folder they were moved to, or `nil` if even that failed.
+    /// Internal rather than private so the recovery path can be tested without damaging the
+    /// real store.
+    static func setAside(storeAt url: URL) -> URL? {
+        let fileManager = FileManager.default
+        let folder = url.deletingLastPathComponent()
+            .appending(path: "Recovered")
+            .appending(path: "\(Int(Date.now.timeIntervalSince1970))")
+        do {
+            try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
+            for suffix in ["", "-shm", "-wal"] {
+                let source = URL(fileURLWithPath: url.path + suffix)
+                guard fileManager.fileExists(atPath: source.path) else { continue }
+                try fileManager.moveItem(at: source, to: folder.appending(path: source.lastPathComponent))
+            }
+            log.notice("Unreadable store moved to \(folder.path(percentEncoded: false), privacy: .public)")
+            return folder
+        } catch {
+            log.error("Could not set the unreadable store aside: \(error, privacy: .public)")
+            return nil
+        }
+    }
+
+    /// Last resort, so the app opens even if writes cannot be persisted, rather than not opening.
+    private static func inMemoryFallback(schema: Schema) -> ModelContainer {
+        let memory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        do { return try ModelContainer(for: schema, configurations: memory) }
+        catch { fatalError("SwiftData cannot start even in memory: \(error)") }
     }
 
     /// Seeds sample data for previews / `-seedSampleData` launch arg.
@@ -33,6 +90,6 @@ enum Persistence {
         washer.coverages = [svc]
 
         for item in [tv, laptop, washer] { context.insert(item) }
-        try? context.save()
+        context.saveOrReport()
     }
 }

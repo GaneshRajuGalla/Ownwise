@@ -8,14 +8,9 @@ struct ScanPipeline: Sendable {
     var ai: AIExtractor = AIExtractor()
 
     func run(images: [CGImage]) async -> ExtractionDraft {
-        // OCR all pages concurrently.
-        let texts: [String] = await withTaskGroup(of: String.self) { group in
-            for img in images {
-                group.addTask { (try? await self.ocr.recognize(img).text) ?? "" }
-            }
-            var out: [String] = []
-            for await t in group { out.append(t) }
-            return out
+        // OCR all pages concurrently, then put them back in page order for the parser.
+        let texts = await orderedConcurrentMap(images) { img in
+            (try? await self.ocr.recognize(img).text) ?? ""
         }
         let joined = texts.joined(separator: "\n")
         let parsed = parser.parse(joined)

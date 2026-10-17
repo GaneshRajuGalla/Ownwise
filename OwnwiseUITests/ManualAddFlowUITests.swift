@@ -44,9 +44,22 @@ final class ManualAddFlowUITests: XCTestCase {
         let listApp = app
         let rowText = listApp.staticTexts["Sample TV"].firstMatch
         if rowText.waitForExistence(timeout: 5) {
+            // Swiping reveals Delete, but nothing is destroyed until it is confirmed.
             rowText.swipeLeft()
-            let del = app.buttons["Delete"].firstMatch
-            if del.waitForExistence(timeout: 3) { del.tap() }
+            let swipeDelete = app.buttons[AXID.deleteSwipeButton].firstMatch
+            XCTAssertTrue(swipeDelete.waitForExistence(timeout: 3))
+            swipeDelete.tap()
+
+            let cancel = app.buttons["Cancel"].firstMatch
+            XCTAssertTrue(cancel.waitForExistence(timeout: 3), "Deleting an item asks for confirmation")
+            cancel.tap()
+            XCTAssertTrue(app.staticTexts["Sample TV"].waitForExistence(timeout: 3), "Cancelling keeps the item")
+
+            rowText.swipeLeft()
+            app.buttons[AXID.deleteSwipeButton].firstMatch.tap()
+            let confirm = app.buttons[AXID.deleteItemButton].firstMatch
+            XCTAssertTrue(confirm.waitForExistence(timeout: 3))
+            confirm.tap()
         }
         XCTAssertFalse(app.staticTexts["Sample TV"].waitForExistence(timeout: 3))
     }

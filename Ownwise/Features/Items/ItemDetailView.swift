@@ -17,6 +17,7 @@ struct ItemDetailView: View {
     @State private var showPaywall = false
     @State private var exportError: String?
     @State private var showCustomReminder = false
+    @State private var editingCoverage: Coverage?
     @State private var photoSelection: PhotosPickerItem?
 
     var body: some View {
@@ -51,6 +52,9 @@ struct ItemDetailView: View {
         }
         .sheet(isPresented: $showPaywall) { PaywallView() }
         .sheet(isPresented: $showCustomReminder) { CustomReminderEditor(item: item) }
+        .sheet(item: $editingCoverage) { coverage in
+            CoverageReminderEditor(coverage: coverage)
+        }
         .alert("Export failed", isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -146,14 +150,35 @@ struct ItemDetailView: View {
     }
 
     var reminderSection: some View {
-        SectionCard(title: "Reminder") {
+        SectionCard(title: "Reminders") {
+            if coverageReminders.isEmpty {
+                Text("Coverage reminders are automatic as soon as you add a return window or warranty.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(coverageReminders, id: \.id) { c in
+                Button { editingCoverage = c } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(c.kind.label).font(.body).foregroundStyle(Color.primary)
+                            Text(coverageReminderText(c)).font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
+                    }
+                }
+                .accessibilityIdentifier("\(AXID.editCoverageReminderPrefix)\(c.id.uuidString)")
+            }
+
+            Divider()
+
             if let date = item.customReminderDate, date > .now, store.isPro {
                 Label(date.formatted(date: .abbreviated, time: .shortened), systemImage: "bell")
                     .font(.body)
                 Button("Change reminder") { showCustomReminder = true }
                     .accessibilityIdentifier(AXID.itemCustomReminderButton)
             } else {
-                Text("Coverage reminders are automatic. Need one on your own date?")
+                Text("Need an alert on your own date, outside any coverage?")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Button("Add a custom reminder") {
@@ -162,6 +187,17 @@ struct ItemDetailView: View {
                 .accessibilityIdentifier(AXID.itemCustomReminderButton)
             }
         }
+    }
+
+    /// Every coverage's schedule, soonest end first.
+    private var coverageReminders: [Coverage] {
+        (item.coverages ?? []).sorted { $0.endDate < $1.endDate }
+    }
+
+    /// What will actually fire, resolved through the scheduler (so a Pro user's
+    /// global choice shows up here too, not just the built-in defaults).
+    func coverageReminderText(_ c: Coverage) -> String {
+        ReminderPreferences.presetPhrase(reminder.leads(for: c))
     }
 
     var actions: some View {
@@ -243,21 +279,21 @@ struct ItemDetailView: View {
     /// Starts the next service interval from today, so reminders keep recurring.
     func markServiced(_ c: Coverage) {
         c.lastServiceDate = .now
-        try? modelContext.save()
+        modelContext.saveOrReport()
         Task { await reminder.rescheduleFromContext(modelContext) }
     }
 
     func deleteCoverage(_ c: Coverage) {
         item.coverages = (item.coverages ?? []).filter { $0.id != c.id }
         modelContext.delete(c)
-        try? modelContext.save()
+        modelContext.saveOrReport()
         Task { await reminder.rescheduleFromContext(modelContext) }
     }
 
     func deleteAttachment(_ att: Attachment) {
         item.attachments = (item.attachments ?? []).filter { $0.id != att.id }
         modelContext.delete(att)
-        try? modelContext.save()
+        modelContext.saveOrReport()
     }
 
     func addPhoto(_ selection: PhotosPickerItem) async {
@@ -267,7 +303,7 @@ struct ItemDetailView: View {
               let jpeg = image.jpegData(compressionQuality: 0.7) else { return }
         let attachment = Attachment(kind: .photo, data: jpeg, contentType: "public.jpeg")
         item.attachments = (item.attachments ?? []) + [attachment]
-        try? modelContext.save()
+        modelContext.saveOrReport()
     }
 
     func call() {
@@ -285,7 +321,7 @@ struct ItemDetailView: View {
         // Leave the screen first so nothing reads the deleted model.
         dismiss()
         modelContext.delete(item)
-        try? modelContext.save()
+        modelContext.saveOrReport()
         Task { await reminder.rescheduleFromContext(modelContext) }
     }
 }

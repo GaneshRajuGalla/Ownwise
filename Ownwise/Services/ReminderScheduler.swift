@@ -20,6 +20,15 @@ final class ReminderScheduler {
         ReminderPreferences.standard.leads(for: kind)
     }
 
+    /// What this coverage will actually remind on: the user's pick for this one
+    /// coverage, else the global setting (Pro), else the smart default.
+    func leads(for coverage: Coverage) -> [Int] {
+        if let chosen = coverage.reminderLeadDays, !chosen.isEmpty {
+            return ReminderPreferences.normalizedLeads(chosen)
+        }
+        return preferences.leads(for: coverage.kind)
+    }
+
     static func notificationID(coverageID: UUID, lead: Int) -> String {
         "cov-\(coverageID.uuidString)-\(lead)"
     }
@@ -63,34 +72,46 @@ final class ReminderScheduler {
     }
 
     /// Builds the (capped) request list. Pure value — safe to unit test.
-    func makeRequests(items: [Item]) -> [UNNotificationRequest] {
+    /// `calendar` is injectable so date handling (DST, time zones) is testable;
+    /// triggers are built from components without a time zone, so a reminder
+    /// fires at the same wall-clock time in whatever zone the user is in.
+    func makeRequests(items: [Item], calendar: Calendar = .current) -> [UNNotificationRequest] {
+        let now = Date.now
         var requests: [UNNotificationRequest] = []
         for item in items {
-            if customRemindersEnabled, let date = item.customReminderDate, date > .now {
+            if customRemindersEnabled, let date = item.customReminderDate, date > now {
                 let content = UNMutableNotificationContent()
                 content.title = String(localized: "Reminder")
                 content.body = item.notes.isEmpty ? item.name : "\(item.name): \(item.notes)"
                 content.sound = .default
-                let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+                let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
                 requests.append(UNNotificationRequest(identifier: Self.customNotificationID(itemID: item.id), content: content,
                                                       trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
             }
             for coverage in item.coverages ?? [] {
-                switch coverage.kind {
-                case .servicePlan:
-                    if let next = coverage.nextServiceDate, next > .now {
-                        requests.append(makeRequest(coverage: coverage, item: item, lead: 0, date: preferences.fireDate(on: next), title: "Service due", body: "\(item.name) is due for service."))
+                let isService = coverage.kind == .servicePlan
+                let base = isService ? coverage.nextServiceDate : coverage.endDate
+                // Long-expired coverage and unscheduled service plans have nothing to announce.
+                guard let base, base > now else { continue }
+                for lead in leads(for: coverage) {
+                    guard let day = calendar.date(byAdding: .day, value: -lead, to: base) else { continue }
+                    let fire = preferences.fireDate(on: day, calendar: calendar)
+                    // A trigger whose date has already passed never fires.
+                    guard fire > now else { continue }
+                    let title: String
+                    let body: String
+                    if isService {
+                        title = String(localized: "Service due")
+                        body = lead == 0
+                            ? String(localized: "\(item.name) is due for service.")
+                            : String(localized: "\(item.name) is due for service in \(lead) day\(lead == 1 ? "" : "s").")
+                    } else {
+                        title = lead <= 1 ? String(localized: "Ending soon") : String(localized: "Upcoming end")
+                        body = lead == 0
+                            ? String(localized: "\(item.name): coverage ends today.")
+                            : String(localized: "\(item.name): \(coverage.kind.label.lowercased()) ends in \(lead) day\(lead == 1 ? "" : "s").")
                     }
-                default:
-                    for lead in preferences.leads(for: coverage.kind) {
-                        guard let day = Calendar.current.date(byAdding: .day, value: -lead, to: coverage.endDate) else { continue }
-                        let fire = preferences.fireDate(on: day)
-                        guard fire > .now else { continue }
-                        let body = lead == 0
-                            ? "\(item.name): coverage ends today."
-                            : "\(item.name): \(coverage.kind.label.lowercased()) ends in \(lead) day\(lead == 1 ? "" : "s")."
-                        requests.append(makeRequest(coverage: coverage, item: item, lead: lead, date: fire, title: lead <= 1 ? "Ending soon" : "Upcoming end", body: body))
-                    }
+                    requests.append(makeRequest(coverage: coverage, item: item, lead: lead, date: fire, title: title, body: body, calendar: calendar))
                 }
             }
         }
@@ -113,12 +134,12 @@ final class ReminderScheduler {
         (r.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() ?? .distantFuture
     }
 
-    private func makeRequest(coverage: Coverage, item: Item, lead: Int, date: Date, title: String, body: String) -> UNNotificationRequest {
+    private func makeRequest(coverage: Coverage, item: Item, lead: Int, date: Date, title: String, body: String, calendar: Calendar) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
-        let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
         return UNNotificationRequest(identifier: Self.notificationID(coverageID: coverage.id, lead: lead), content: content, trigger: trigger)
     }

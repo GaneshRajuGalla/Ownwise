@@ -10,6 +10,7 @@ struct CoverageEditor: View {
     @State private var kind: CoverageKind = .returnWindow
     @State private var start: Date
     @State private var lengthText = "30"
+    @State private var leads: [Int]?
     @State private var showPaywall = false
 
     init(item: Item) {
@@ -47,6 +48,15 @@ struct CoverageEditor: View {
                         Text("Enter a whole number.")
                     }
                 }
+                Section {
+                    ReminderPresetPicker(kind: kind, leads: $leads)
+                } header: {
+                    Text("Remind me")
+                } footer: {
+                    Text(kind == .servicePlan
+                         ? "Service reminders can fire before the due date, and on it."
+                         : "Choose when we should alert you before this ends.")
+                }
             }
             .navigationTitle("Add coverage")
             .navigationBarTitleDisplayMode(.inline)
@@ -61,6 +71,8 @@ struct CoverageEditor: View {
             .onChange(of: kind) { _, newKind in
                 lengthText = String(Self.defaultLength(newKind))
                 start = newKind == .servicePlan ? .now : item.purchaseDate
+                // Presets differ per kind, so a carried-over choice would mislead.
+                leads = nil
             }
             .sheet(isPresented: $showPaywall) { PaywallView() }
         }
@@ -112,13 +124,14 @@ struct CoverageEditor: View {
             return
         }
         let c = Coverage(kind: kind, start: start, end: end)
+        c.reminderLeadDays = leads
         if kind == .servicePlan {
             c.serviceIntervalMonths = length
             c.lastServiceDate = start
         }
         c.item = item
         item.coverages = (item.coverages ?? []) + [c]
-        try? modelContext.save()
+        modelContext.saveOrReport()
         Task { await reminder.rescheduleFromContext(modelContext) }
         dismiss()
     }

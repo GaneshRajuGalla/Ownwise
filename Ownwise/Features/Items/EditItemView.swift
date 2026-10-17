@@ -20,6 +20,8 @@ struct EditItemView: View {
     @State private var modelNumber = ""
     @State private var orderNumber = ""
     @State private var priceText = ""
+    @State private var returnLeads: [Int]?
+    @State private var warrantyLeads: [Int]?
     @State private var didSave = false
 
     var body: some View {
@@ -39,6 +41,21 @@ struct EditItemView: View {
                 if item == nil {
                     TextField("Return window (days)", text: $returnDaysText).keyboardType(.numberPad)
                     TextField("Warranty (months)", text: $warrantyMonthsText).keyboardType(.numberPad)
+                }
+                if item == nil, returnDays > 0 || warrantyMonths > 0 {
+                    Section {
+                        if returnDays > 0 {
+                            coverageReminderRow("Return window", kind: .returnWindow, leads: $returnLeads)
+                        }
+                        if warrantyMonths > 0 {
+                            coverageReminderRow("Warranty", kind: .manufacturer, leads: $warrantyLeads)
+                        }
+                    } header: {
+                        Text("Remind me")
+                    } footer: {
+                        Text("Choose when we should alert you. You can change this later from the item.")
+                    }
+                    .accessibilityIdentifier(AXID.itemReminderSection)
                 }
                 TextField("Support phone", text: $supportPhone)
                     .keyboardType(.phonePad)
@@ -85,18 +102,37 @@ struct EditItemView: View {
             new.modelNumber = modelNumber; new.orderNumber = orderNumber
             new.priceMinor = parsedPrice(currencyCode: new.currencyCode)
             if let d = Int(returnDaysText), d > 0 {
-                new.coverages = (new.coverages ?? []) + [Coverage(kind: .returnWindow, start: purchaseDate,
-                                                                  end: Calendar.current.date(byAdding: .day, value: d, to: purchaseDate) ?? purchaseDate)]
+                let cov = Coverage(kind: .returnWindow, start: purchaseDate,
+                                   end: Calendar.current.date(byAdding: .day, value: d, to: purchaseDate) ?? purchaseDate)
+                cov.reminderLeadDays = returnLeads
+                new.coverages = (new.coverages ?? []) + [cov]
             }
             if let m = Int(warrantyMonthsText), m > 0 {
-                new.coverages = (new.coverages ?? []) + [Coverage(kind: .manufacturer, start: purchaseDate,
-                                          end: Calendar.current.date(byAdding: .month, value: m, to: purchaseDate) ?? purchaseDate)]
+                let cov = Coverage(kind: .manufacturer, start: purchaseDate,
+                                   end: Calendar.current.date(byAdding: .month, value: m, to: purchaseDate) ?? purchaseDate)
+                cov.reminderLeadDays = warrantyLeads
+                new.coverages = (new.coverages ?? []) + [cov]
             }
             modelContext.insert(new)
         }
-        try? modelContext.save()
+        modelContext.saveOrReport()
         Task { await reminder.rescheduleFromContext(modelContext) }
         onDone()
+    }
+
+    // MARK: Reminders
+
+    private var returnDays: Int { Int(returnDaysText.trimmingCharacters(in: .whitespaces)) ?? 0 }
+    private var warrantyMonths: Int { Int(warrantyMonthsText.trimmingCharacters(in: .whitespaces)) ?? 0 }
+
+    /// A titled chip row for one coverage kind. Only new items need it: an
+    /// existing item is edited coverage-by-coverage from its detail screen.
+    private func coverageReminderRow(_ title: LocalizedStringKey, kind: CoverageKind, leads: Binding<[Int]?>) -> some View {
+        VStack(alignment: .leading, spacing: DS.Space.s) {
+            Text(title).font(.subheadline.weight(.semibold))
+            ReminderPresetPicker(kind: kind, leads: leads)
+        }
+        .padding(.vertical, DS.Space.xs)
     }
 
     private var currencyCode: String {

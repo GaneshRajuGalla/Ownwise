@@ -27,7 +27,14 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background: appLock.didEnterBackground()
-            case .active: appLock.didBecomeActive()
+            case .active:
+                appLock.didBecomeActive()
+                // Reminders go stale while the app is away (a permission change in Settings, or
+                // the system dropping them), so re-check the permission and rebuild on return.
+                Task {
+                    await reminder.refreshAuthorizationStatus()
+                    await reminder.rescheduleFromContext(modelContext)
+                }
             default: break
             }
         }

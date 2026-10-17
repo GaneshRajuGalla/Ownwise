@@ -21,8 +21,10 @@ final class ScanReviewFlowUITests: XCTestCase {
         XCTAssertEqual(merchant.value as? String, "Best Buy")
         let total = app.textFields[AXID.reviewTotalField]
         XCTAssertEqual(total.value as? String, "1299.50")
-        app.collectionViews.firstMatch.swipeUp()
         let save = app.buttons[AXID.reviewSaveButton].exists ? app.buttons[AXID.reviewSaveButton] : app.buttons["Save item"]
+        // The review form grows with the coverage/reminder sections, so scroll
+        // until Save is reachable rather than assuming one swipe is enough.
+        for _ in 0..<4 where !save.exists { app.collectionViews.firstMatch.swipeUp() }
         XCTAssertTrue(save.waitForExistence(timeout: 5), app.debugDescription)
         save.tap()
     }

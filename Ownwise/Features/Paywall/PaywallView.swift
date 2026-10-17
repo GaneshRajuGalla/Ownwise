@@ -65,7 +65,7 @@ struct PaywallView: View {
             feature("infinity", "Unlimited items", "Go beyond the \(StoreManager.freeItemLimit)-item free limit.")
             feature("doc.richtext", "Claim Pack PDF", "Receipt, serial and coverage in one file for any warranty claim.")
             feature("tablecells", "CSV export", "Your whole inventory as a spreadsheet.")
-            feature("bell.badge", "Custom reminders", "Choose your own days and time, plus one-off reminders on any date.")
+            feature("bell.badge", "Custom reminder timing", "Any lead time you like, your own reminder hour, and one-off reminders on any date.")
             feature("wrench.and.screwdriver", "Service plans", "Reminders for maintenance and servicing.")
         }
     }

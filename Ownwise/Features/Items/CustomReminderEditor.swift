@@ -44,7 +44,7 @@ struct CustomReminderEditor: View {
 
     private func save(_ newDate: Date?) {
         item.customReminderDate = newDate
-        try? modelContext.save()
+        modelContext.saveOrReport()
         Task { await reminder.rescheduleFromContext(modelContext) }
         dismiss()
     }

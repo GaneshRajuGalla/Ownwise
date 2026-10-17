@@ -69,6 +69,5 @@ enum SchemaV1: VersionedSchema {
     }
 }
 
-typealias Item = SchemaV1.Item
-typealias Coverage = SchemaV1.Coverage
-typealias Attachment = SchemaV1.Attachment
+// The app-wide `Item` / `Coverage` / `Attachment` aliases live in SchemaV2.swift,
+// which is the current version. v1 stays only so the migration can read old stores.

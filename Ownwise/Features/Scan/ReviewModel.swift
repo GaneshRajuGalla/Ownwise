@@ -17,6 +17,9 @@ final class ReviewModel {
     var currencyCode: String = ""
     var warrantyMonthsText: String = ""
     var returnDaysText: String = ""
+    /// Reminder timing chosen on the review screen; nil keeps the smart default.
+    var returnLeads: [Int]?
+    var warrantyLeads: [Int]?
     var orderNumber: String = ""
     var fieldsFromAI: Set<ExtractionDraft.Field> = []
     var ocrText: String = ""
@@ -59,16 +62,21 @@ final class ReviewModel {
         item.category = category
         item.purchaseDate = purchaseDate
         item.currencyCode = currencyCode.isEmpty ? (Locale.current.currency?.identifier ?? "USD") : currencyCode.uppercased()
-        if let total = Double(totalText.replacingOccurrences(of: ",", with: ".")), total >= 0 {
+        // One parser everywhere (ReceiptParser also accepts "1,299.50" and "1.299,50").
+        if let total = ReceiptParser().parseAmount(totalText), total >= 0 {
             item.priceMinor = Money.minorUnits(total, currencyCode: item.currencyCode)
         }
         item.orderNumber = orderNumber
         var coverages: [Coverage] = []
         if let r = Int(returnDaysText), r > 0 {
-            coverages.append(Coverage(kind: .returnWindow, start: purchaseDate, end: Calendar.current.date(byAdding: .day, value: r, to: purchaseDate) ?? purchaseDate))
+            let coverage = Coverage(kind: .returnWindow, start: purchaseDate, end: Calendar.current.date(byAdding: .day, value: r, to: purchaseDate) ?? purchaseDate)
+            coverage.reminderLeadDays = returnLeads
+            coverages.append(coverage)
         }
         if let w = Int(warrantyMonthsText), w > 0 {
-            coverages.append(Coverage(kind: .manufacturer, start: purchaseDate, end: Calendar.current.date(byAdding: .month, value: w, to: purchaseDate) ?? purchaseDate))
+            let coverage = Coverage(kind: .manufacturer, start: purchaseDate, end: Calendar.current.date(byAdding: .month, value: w, to: purchaseDate) ?? purchaseDate)
+            coverage.reminderLeadDays = warrantyLeads
+            coverages.append(coverage)
         }
         item.coverages = coverages
         item.attachments = pageImages.map { data in
@@ -77,6 +85,12 @@ final class ReviewModel {
             return attachment
         }
         context.insert(item)
-        try? context.save()
+        context.saveOrReport()
     }
+}
+
+extension ReviewModel {
+    /// Whole-number days/months typed on the review screen; 0 means "not set".
+    var returnDays: Int { Int(returnDaysText.trimmingCharacters(in: .whitespaces)) ?? 0 }
+    var warrantyMonths: Int { Int(warrantyMonthsText.trimmingCharacters(in: .whitespaces)) ?? 0 }
 }
