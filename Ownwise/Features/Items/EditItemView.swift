@@ -34,13 +34,23 @@ struct EditItemView: View {
                 Picker("Category", selection: $category) {
                     ForEach(ItemCategory.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
+                .accessibilityIdentifier(AXID.itemCategoryPicker)
                 DatePicker("Purchased", selection: $purchaseDate, displayedComponents: .date)
-                TextField("Price (\(currencyCode))", text: $priceText).keyboardType(.decimalPad)
+                    .accessibilityIdentifier(AXID.itemPurchaseDatePicker)
+                TextField("Price (\(currencyCode))", text: $priceText)
+                    .keyboardType(.decimalPad)
+                    .accessibilityIdentifier(AXID.itemPriceField)
                 TextField("Model number", text: $modelNumber)
+                    .accessibilityIdentifier(AXID.itemModelField)
                 TextField("Order number", text: $orderNumber)
+                    .accessibilityIdentifier(AXID.itemOrderField)
                 if item == nil {
-                    TextField("Return window (days)", text: $returnDaysText).keyboardType(.numberPad)
-                    TextField("Warranty (months)", text: $warrantyMonthsText).keyboardType(.numberPad)
+                    TextField("Return window (days)", text: $returnDaysText)
+                        .keyboardType(.numberPad)
+                        .accessibilityIdentifier(AXID.itemReturnDaysField)
+                    TextField("Warranty (months)", text: $warrantyMonthsText)
+                        .keyboardType(.numberPad)
+                        .accessibilityIdentifier(AXID.itemWarrantyMonthsField)
                 }
                 if item == nil, returnDays > 0 || warrantyMonths > 0 {
                     Section {
@@ -60,8 +70,10 @@ struct EditItemView: View {
                 TextField("Support phone", text: $supportPhone)
                     .keyboardType(.phonePad)
                     .textContentType(.telephoneNumber)
+                    .accessibilityIdentifier(AXID.itemSupportPhoneField)
                 TextField("Notes", text: $notes, axis: .vertical)
                     .lineLimit(1...4)
+                    .accessibilityIdentifier(AXID.itemNotesField)
             }
             .navigationTitle(item == nil ? "New item" : "Edit item")
             .toolbar {

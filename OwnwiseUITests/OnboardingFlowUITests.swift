@@ -23,6 +23,6 @@ final class OnboardingFlowUITests: XCTestCase {
         app.buttons[AXID.onboardingGetStarted].tap()
 
         // Home empty state with scan CTA.
-        XCTAssertTrue(app.buttons["Scan a receipt"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons[AXID.emptyStateCTA].waitForExistence(timeout: 5))
     }
 }

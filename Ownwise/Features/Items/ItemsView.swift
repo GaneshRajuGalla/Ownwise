@@ -56,6 +56,7 @@ struct ItemsView: View {
                             Button(c.label) { categoryFilter = c }
                         }
                     } label: { Image(systemName: "line.3.horizontal.decrease.circle") }
+                    .accessibilityIdentifier(AXID.categoryMenu)
                 }
             }
             .overlay {

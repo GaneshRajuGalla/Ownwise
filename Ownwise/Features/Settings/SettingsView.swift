@@ -20,6 +20,7 @@ struct SettingsView: View {
                 Section("Pro") {
                     HStack { Text("Status"); Spacer(); Text(store.isPro ? "Pro" : "Free").foregroundStyle(.secondary) }
                     Button(store.isPro ? "Manage Pro" : "Upgrade to Pro") { showPaywall = true }
+                        .accessibilityIdentifier(AXID.settingsUpgradeButton)
                 }
                 Section {
                     Button { openReminders() } label: { proRow("Customize reminders") }
@@ -41,6 +42,7 @@ struct SettingsView: View {
                     Toggle("App lock (Face ID)", isOn: Binding(get: { appLock.isEnabled },
                                                                set: { on in Task { await appLock.setEnabled(on) } }))
                         .disabled(!appLock.isEnabled && !appLock.canAuthenticate)
+                        .accessibilityIdentifier(AXID.settingsAppLockToggle)
                 } header: {
                     Text("Security")
                 } footer: {
@@ -54,6 +56,7 @@ struct SettingsView: View {
                     Button("Export & backup") { showExport = true }
                         .accessibilityIdentifier(AXID.settingsExportButton)
                     NavigationLink("Privacy") { PrivacyView() }
+                        .accessibilityIdentifier(AXID.settingsPrivacyLink)
                 }
                 if SyncSettings.isAvailable {
                     Section {
@@ -82,7 +85,10 @@ struct SettingsView: View {
                 }
                 Section("About") {
                     LabeledContent("Version", value: appVersion)
-                    Link("Contact support", destination: URL(string: "mailto:ganeshraju14014@gmail.com")!)
+                    if let support = Links.supportEmail {
+                        Link("Contact support", destination: support)
+                            .accessibilityIdentifier(AXID.settingsContactLink)
+                    }
                 }
             }
             .navigationTitle("Settings")

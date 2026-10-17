@@ -8,7 +8,7 @@ final class ItemDetailFlowUITests: XCTestCase {
     private func openItem(_ name: String, args: [String]) -> XCUIApplication {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData"] + args)
         app.launch()
-        app.tabBars.buttons["Items"].tap()
+        app.tabBars.buttons[AXID.tabItems].tap()
         let row = app.staticTexts[name].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.tap()

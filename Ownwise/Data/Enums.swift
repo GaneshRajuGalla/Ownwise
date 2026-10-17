@@ -5,13 +5,13 @@ enum ItemCategory: String, CaseIterable, Codable, Sendable {
 
     var label: String {
         switch self {
-        case .appliance: "Appliance"
-        case .electronics: "Electronics"
-        case .mobile: "Mobile"
-        case .computer: "Computer"
-        case .furniture: "Furniture"
-        case .vehicle: "Vehicle"
-        case .other: "Other"
+        case .appliance: String(localized: "Appliance", comment: "Item category")
+        case .electronics: String(localized: "Electronics", comment: "Item category")
+        case .mobile: String(localized: "Mobile", comment: "Item category")
+        case .computer: String(localized: "Computer", comment: "Item category")
+        case .furniture: String(localized: "Furniture", comment: "Item category")
+        case .vehicle: String(localized: "Vehicle", comment: "Item category")
+        case .other: String(localized: "Other", comment: "Item category")
         }
     }
 }
@@ -21,11 +21,11 @@ enum CoverageKind: String, CaseIterable, Codable, Sendable {
 
     var label: String {
         switch self {
-        case .returnWindow: "Return window"
-        case .manufacturer: "Manufacturer warranty"
-        case .extended: "Extended warranty"
-        case .servicePlan: "Service plan"
-        case .insurance: "Insurance"
+        case .returnWindow: String(localized: "Return window", comment: "Coverage kind")
+        case .manufacturer: String(localized: "Manufacturer warranty", comment: "Coverage kind")
+        case .extended: String(localized: "Extended warranty", comment: "Coverage kind")
+        case .servicePlan: String(localized: "Service plan", comment: "Coverage kind")
+        case .insurance: String(localized: "Insurance", comment: "Coverage kind")
         }
     }
 }
@@ -35,11 +35,11 @@ enum AttachmentKind: String, CaseIterable, Codable, Sendable {
 
     var label: String {
         switch self {
-        case .receipt: "Receipt"
-        case .invoice: "Invoice"
-        case .warrantyCard: "Warranty card"
-        case .manual: "Manual"
-        case .photo: "Photo"
+        case .receipt: String(localized: "Receipt", comment: "Attachment kind")
+        case .invoice: String(localized: "Invoice", comment: "Attachment kind")
+        case .warrantyCard: String(localized: "Warranty card", comment: "Attachment kind")
+        case .manual: String(localized: "Manual", comment: "Attachment kind")
+        case .photo: String(localized: "Photo", comment: "Attachment kind")
         }
     }
 }
@@ -52,10 +52,10 @@ enum CoverageStatus: Sendable, Equatable {
 
     var label: String {
         switch self {
-        case .active: "Covered"
-        case .expiringSoon(let days): "\(days)d left"
-        case .expired: "Expired"
-        case .serviceDue: "Service due"
+        case .active: String(localized: "Covered", comment: "Coverage status badge")
+        case .expiringSoon(let days): String(localized: "\(days)d left", comment: "Coverage status badge, e.g. 30d left")
+        case .expired: String(localized: "Expired", comment: "Coverage status badge")
+        case .serviceDue: String(localized: "Service due", comment: "Coverage status badge")
         }
     }
 }

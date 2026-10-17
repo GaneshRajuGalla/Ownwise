@@ -9,9 +9,9 @@ final class PaywallFlowUITests: XCTestCase {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-forceFree"])
         app.launch()
 
-        app.tabBars.buttons["Settings"].tap()
+        app.tabBars.buttons[AXID.tabSettings].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        let upgrade = app.buttons["Upgrade to Pro"]
+        let upgrade = app.buttons[AXID.settingsUpgradeButton]
         XCTAssertTrue(upgrade.waitForExistence(timeout: 5))
         upgrade.tap()
         XCTAssertTrue(app.buttons[AXID.paywallRestoreButton].waitForExistence(timeout: 5))

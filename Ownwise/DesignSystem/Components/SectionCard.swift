@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SectionCard<Content: View>: View {
-    var title: String?
+    var title: LocalizedStringKey?
     @ViewBuilder var content: () -> Content
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Space.s) {

@@ -13,23 +13,28 @@ struct ReviewView: View {
             Section("Item") {
                 TextField("Name", text: $model.name).accessibilityIdentifier(AXID.reviewNameField)
                 TextField("Merchant", text: $model.merchant).accessibilityIdentifier(AXID.reviewMerchantField)
-                TextField("Brand", text: $model.brand)
-                TextField("Model number", text: $model.modelNumber)
-                TextField("Serial number", text: $model.serialNumber)
+                TextField("Brand", text: $model.brand).accessibilityIdentifier(AXID.reviewBrandField)
+                TextField("Model number", text: $model.modelNumber).accessibilityIdentifier(AXID.reviewModelField)
+                TextField("Serial number", text: $model.serialNumber).accessibilityIdentifier(AXID.reviewSerialField)
                 Picker("Category", selection: $model.category) {
                     ForEach(ItemCategory.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
+                .accessibilityIdentifier(AXID.itemCategoryPicker)
                 DatePicker("Purchased", selection: $model.purchaseDate, displayedComponents: .date)
                     .accessibilityIdentifier(AXID.reviewDateField)
             }
             Section("Price") {
                 TextField("Total", text: $model.totalText).keyboardType(.decimalPad).accessibilityIdentifier(AXID.reviewTotalField)
-                TextField("Currency code", text: $model.currencyCode)
-                TextField("Order number", text: $model.orderNumber)
+                TextField("Currency code", text: $model.currencyCode).accessibilityIdentifier(AXID.reviewCurrencyField)
+                TextField("Order number", text: $model.orderNumber).accessibilityIdentifier(AXID.reviewOrderField)
             }
             Section("Coverage") {
-                TextField("Warranty (months)", text: $model.warrantyMonthsText).keyboardType(.numberPad)
-                TextField("Return window (days)", text: $model.returnDaysText).keyboardType(.numberPad)
+                TextField("Warranty (months)", text: $model.warrantyMonthsText)
+                    .keyboardType(.numberPad)
+                    .accessibilityIdentifier(AXID.reviewWarrantyMonthsField)
+                TextField("Return window (days)", text: $model.returnDaysText)
+                    .keyboardType(.numberPad)
+                    .accessibilityIdentifier(AXID.reviewReturnDaysField)
             }
             if model.returnDays > 0 || model.warrantyMonths > 0 {
                 Section {

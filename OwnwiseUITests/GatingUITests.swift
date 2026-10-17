@@ -10,7 +10,7 @@ final class GatingUITests: XCTestCase {
     func testFreeUserCanOpenTheCoverageEditorWithoutAPaywall() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forceFree"])
         app.launch()
-        app.tabBars.buttons["Items"].tap()
+        app.tabBars.buttons[AXID.tabItems].tap()
         let row = app.staticTexts["Washer"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.tap()
@@ -26,7 +26,7 @@ final class GatingUITests: XCTestCase {
     func testFreeUserReachesExportWithoutAPaywall() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forceFree"])
         app.launch()
-        app.tabBars.buttons["Settings"].tap()
+        app.tabBars.buttons[AXID.tabSettings].tap()
 
         XCTAssertTrue(app.buttons[AXID.settingsExportButton].waitForExistence(timeout: 5))
         app.buttons[AXID.settingsExportButton].tap()
@@ -39,7 +39,7 @@ final class GatingUITests: XCTestCase {
     func testFreeUserGetsThePaywallForCustomReminders() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forceFree"])
         app.launch()
-        app.tabBars.buttons["Settings"].tap()
+        app.tabBars.buttons[AXID.tabSettings].tap()
 
         XCTAssertTrue(app.buttons[AXID.settingsRemindersButton].waitForExistence(timeout: 5))
         app.buttons[AXID.settingsRemindersButton].tap()

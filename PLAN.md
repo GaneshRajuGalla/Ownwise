@@ -91,6 +91,23 @@ G1 (`LocalizedStringKey` for `SectionCard`/`EmptyStateView`), G2 (enum labels �
 agreement), G3 (missing `AXID`s), G4 (RTL chevron, AX5 truncation), G5 (force-unwrapped URLs),
 G6 (empty-filter copy), I5 (drop text matching from UI tests). Mechanical, wide but low risk.
 
+### Phase 3 delivery log — 17 Oct 2026
+
+| Gap | What changed |
+|---|---|
+| G1 | `SectionCard.title` and `EmptyStateView.title/message/actionTitle` are `LocalizedStringKey`. Every call site already passed a literal, so nothing else moved. |
+| G2 | `ItemCategory.label`, `CoverageKind.label`, `AttachmentKind.label`, `CoverageStatus.label` now go through `String(localized:comment:)`, so they localise in the badge, the Claim Pack and the notification body. `ReminderScheduler`'s `"day\(lead == 1 ? \"\" : \"s\")"` is gone: the 0/1/many cases are spelled out as three separate localised strings, because a language with more than two plural forms cannot express them by concatenation. |
+| G3 | Added the identifiers the audit listed — category menu, Settings upgrade/app-lock/privacy/contact, the Export Claim Pack row (**one identifier per item** now: `exportClaimPackPrefix + item.id`), the secondary EditItem and Review fields (model, order, price, currency, support phone, notes, days/months, category picker, purchase date). `ItemDetailView`'s hardcoded `"delete_item_trash"` is a constant. An audit script now proves every declared `AXID` is applied somewhere and every identifier the UI tests use exists in their mirror; the mirror was 10 constants short and is now complete. |
+| G4 | The detail chevron flips for RTL. `StatusBadge` drops `fixedSize` and gains `minimumScaleFactor(0.7)`, so it compresses at AX5 instead of overflowing its row. |
+| G5 | New `Support/Links.swift`: `privacyPolicy`, `supportPage`, `supportEmail` as **optionals**, so a link that cannot be built is simply not offered. All four force-unwraps are gone. |
+| G6 | An empty result list now distinguishes three cases: a real search query (`ContentUnavailableView.search`), an active status filter ("Nothing matches this filter"), and an empty library ("Nothing to search yet") — never `No results for ""`. |
+| I5 | Tests tap tabs and settings by `AXID` instead of visible English. One deliberate exception: the Cancel button of a `confirmationDialog`'s destructive confirm is left as text, because iOS supplies that label itself and drops identifiers on alert actions — documenting the reason beats a flaky test. |
+| — | `PrivacyView` no longer claims "no cloud": it states where data lives *and* that opt-in iCloud sync keeps it in the user's own private database. |
+
+Tests: `LocalisationTests` (enum copy non-empty, badge day form, every fixed link builds and is
+https/mailto — the regression test for G5). G1/G3/G4 are compile-time and identifier-level
+guarantees; `GatingUITests` and `ExportFlowUITests` exercise the new identifiers end to end.
+
 ## Phase 4 — Scan quality and failure states
 
 C2 (`parseTotal` must not match `Subtotal`/`Total savings`), C3 (duplicate service-plan guard),
@@ -148,7 +165,7 @@ F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
 | 0 — Plan | done |
 | 1 — Data safety | **done — awaiting the owner's build** |
 | 2 — Sync (`F3`) + trust (`A4`, `A5`) | **done in code; `F3` needs a capability step** |
-| 3 — Localisation & accessibility | not started |
+| 3 — Localisation & accessibility | **done — awaiting the owner's build** |
 | 4 — Scan quality (+ barcode, promoted) | not started |
 | 5 — Structure & performance | not started |
 | 6 — Test integrity | not started |

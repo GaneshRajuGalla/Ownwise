@@ -6,9 +6,14 @@ final class ExportFlowUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
     private func openExport(_ app: XCUIApplication) {
-        app.tabBars.buttons["Settings"].tap()
+        app.tabBars.buttons[AXID.tabSettings].tap()
         XCTAssertTrue(app.buttons[AXID.settingsExportButton].waitForExistence(timeout: 5))
         app.buttons[AXID.settingsExportButton].tap()
+    }
+
+    private func firstClaimPack(_ app: XCUIApplication) -> XCUIElement {
+        // One identifier per item, so a test can name the row it means.
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", AXID.exportClaimPackPrefix)).firstMatch
     }
 
     private func assertShareSheet(_ app: XCUIApplication) {
@@ -48,7 +53,7 @@ final class ExportFlowUITests: XCTestCase {
         app.launch()
         openExport(app)
 
-        let claim = app.buttons[AXID.exportClaimPackButton].firstMatch
+        let claim = firstClaimPack(app)
         XCTAssertTrue(claim.waitForExistence(timeout: 5))
         claim.tap()
         assertShareSheet(app)
@@ -67,7 +72,7 @@ final class ExportFlowUITests: XCTestCase {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forcePro"])
         app.launch()
         openExport(app)
-        let claim = app.buttons[AXID.exportClaimPackButton].firstMatch
+        let claim = firstClaimPack(app)
         XCTAssertTrue(claim.waitForExistence(timeout: 5))
         claim.tap()
         assertShareSheet(app)
@@ -84,7 +89,7 @@ final class ExportFlowUITests: XCTestCase {
     func testItemDetailClaimPack() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forcePro"])
         app.launch()
-        app.tabBars.buttons["Items"].tap()
+        app.tabBars.buttons[AXID.tabItems].tap()
         let row = app.staticTexts["Washer"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.tap()
@@ -97,7 +102,7 @@ final class ExportFlowUITests: XCTestCase {
     func testItemDetailClaimPackForFreeUserIsAPreview() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forceFree"])
         app.launch()
-        app.tabBars.buttons["Items"].tap()
+        app.tabBars.buttons[AXID.tabItems].tap()
         let row = app.staticTexts["Washer"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.tap()

@@ -66,7 +66,7 @@ struct ItemDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button(role: .destructive) { showDelete = true } label: { Image(systemName: "trash") }
-                    .accessibilityIdentifier("delete_item_trash")
+                    .accessibilityIdentifier(AXID.deleteItemTrashButton)
             }
         }
     }
@@ -164,7 +164,10 @@ struct ItemDetailView: View {
                             Text(coverageReminderText(c)).font(.footnote).foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
+                        Image(systemName: "chevron.right")
+                            .font(.footnote)
+                            .foregroundStyle(.tertiary)
+                            .flipsForRightToLeftLayoutDirection(true)
                     }
                 }
                 .accessibilityIdentifier("\(AXID.editCoverageReminderPrefix)\(c.id.uuidString)")

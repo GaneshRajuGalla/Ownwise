@@ -62,7 +62,18 @@ struct SearchView: View {
             }
             .overlay {
                 if results.isEmpty {
-                    ContentUnavailableView.search(text: query)
+                    // Never "No results for """ — say which of the three empty states this is.
+                    if !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                        ContentUnavailableView.search(text: query)
+                    } else if statusFilter != .all {
+                        EmptyStateView(title: "Nothing matches this filter",
+                                       message: "Try another filter, or clear it to see everything.",
+                                       systemImage: "line.3.horizontal.decrease.circle")
+                    } else {
+                        EmptyStateView(title: "Nothing to search yet",
+                                       message: "Add an item and it will show up here.",
+                                       systemImage: "magnifyingglass")
+                    }
                 }
             }
         }

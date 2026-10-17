@@ -100,7 +100,9 @@ struct PaywallView: View {
                 Button("Restore purchases") { Task { await restore() } }
                     .accessibilityIdentifier(AXID.paywallRestoreButton)
                 Text(verbatim: "·").foregroundStyle(.tertiary)
-                Link("Privacy policy", destination: URL(string: "https://ganeshrajugalla.github.io/Ownwise/privacy.html")!)
+                if let privacy = Links.privacyPolicy {
+                    Link("Privacy policy", destination: privacy)
+                }
             }
             .font(.footnote)
             .disabled(isWorking)

@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct EmptyStateView: View {
-    var title: String
-    var message: String
+    var title: LocalizedStringKey
+    var message: LocalizedStringKey
     var systemImage: String
-    var actionTitle: String? = nil
+    var actionTitle: LocalizedStringKey? = nil
     var action: (() -> Void)? = nil
 
     var body: some View {

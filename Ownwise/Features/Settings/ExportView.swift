@@ -112,7 +112,7 @@ struct ExportView: View {
                             if !store.isPro { ProBadge() }
                         }
                     }
-                    .accessibilityIdentifier(AXID.exportClaimPackButton)
+                    .accessibilityIdentifier(AXID.exportClaimPackPrefix + item.id.uuidString)
                 }
             }
         } header: {

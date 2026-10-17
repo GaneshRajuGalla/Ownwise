@@ -102,14 +102,24 @@ final class ReminderScheduler {
                     let body: String
                     if isService {
                         title = String(localized: "Service due")
-                        body = lead == 0
-                            ? String(localized: "\(item.name) is due for service.")
-                            : String(localized: "\(item.name) is due for service in \(lead) day\(lead == 1 ? "" : "s").")
+                        // Spelled out rather than string-concatenated, so every language can
+                        // express its own plural forms.
+                        if lead == 0 {
+                            body = String(localized: "\(item.name) is due for service.")
+                        } else if lead == 1 {
+                            body = String(localized: "\(item.name) is due for service in 1 day.")
+                        } else {
+                            body = String(localized: "\(item.name) is due for service in \(lead) days.")
+                        }
                     } else {
                         title = lead <= 1 ? String(localized: "Ending soon") : String(localized: "Upcoming end")
-                        body = lead == 0
-                            ? String(localized: "\(item.name): coverage ends today.")
-                            : String(localized: "\(item.name): \(coverage.kind.label.lowercased()) ends in \(lead) day\(lead == 1 ? "" : "s").")
+                        if lead == 0 {
+                            body = String(localized: "\(item.name): coverage ends today.")
+                        } else if lead == 1 {
+                            body = String(localized: "\(item.name): \(coverage.kind.label.lowercased()) ends in 1 day.")
+                        } else {
+                            body = String(localized: "\(item.name): \(coverage.kind.label.lowercased()) ends in \(lead) days.")
+                        }
                     }
                     requests.append(makeRequest(coverage: coverage, item: item, lead: lead, date: fire, title: title, body: body, calendar: calendar))
                 }

@@ -8,7 +8,7 @@ final class RemindersFlowUITests: XCTestCase {
     func testFreeUserCustomizeRemindersOpensPaywall() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-forceFree"])
         app.launch()
-        app.tabBars.buttons["Settings"].tap()
+        app.tabBars.buttons[AXID.tabSettings].tap()
         XCTAssertTrue(app.buttons[AXID.settingsRemindersButton].waitForExistence(timeout: 5))
         // Badged before the tap, so the paywall is never a surprise.
         XCTAssertEqual(app.descendants(matching: .any).matching(identifier: AXID.proBadge).count, 2)
@@ -21,7 +21,7 @@ final class RemindersFlowUITests: XCTestCase {
     func testProUserCanCustomizeReminders() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-forcePro"])
         app.launch()
-        app.tabBars.buttons["Settings"].tap()
+        app.tabBars.buttons[AXID.tabSettings].tap()
         XCTAssertTrue(app.buttons[AXID.settingsRemindersButton].waitForExistence(timeout: 5))
         // Pro users see plain rows — no badge.
         XCTAssertEqual(app.descendants(matching: .any).matching(identifier: AXID.proBadge).count, 0)
@@ -32,7 +32,7 @@ final class RemindersFlowUITests: XCTestCase {
     func testFreeUserCustomItemReminderOpensPaywall() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forceFree"])
         app.launch()
-        app.tabBars.buttons["Items"].tap()
+        app.tabBars.buttons[AXID.tabItems].tap()
         let row = app.staticTexts["Washer"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.tap()
@@ -46,7 +46,7 @@ final class RemindersFlowUITests: XCTestCase {
     func testProUserSetsCustomItemReminder() throws {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-seedSampleData", "-forcePro"])
         app.launch()
-        app.tabBars.buttons["Items"].tap()
+        app.tabBars.buttons[AXID.tabItems].tap()
         let row = app.staticTexts["Washer"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.tap()
@@ -73,7 +73,7 @@ final class RemindersFlowUITests: XCTestCase {
         let app = UITestLaunch.makeApp(extraArgs: ["-skipOnboarding", "-forcePro"])
         app.launch()
 
-        app.tabBars.buttons["Items"].tap()
+        app.tabBars.buttons[AXID.tabItems].tap()
         XCTAssertTrue(app.buttons[AXID.addItemButton].waitAndTap())
         XCTAssertTrue(app.textFields[AXID.itemNameField].waitForExistence(timeout: 5))
         app.textFields[AXID.itemNameField].tap()

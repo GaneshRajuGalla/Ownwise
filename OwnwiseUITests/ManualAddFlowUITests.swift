@@ -10,7 +10,7 @@ final class ManualAddFlowUITests: XCTestCase {
         app.launch()
 
         // Items tab
-        app.tabBars.buttons["Items"].tap()
+        app.tabBars.buttons[AXID.tabItems].tap()
         XCTAssertTrue(app.buttons[AXID.addItemButton].waitForExistence(timeout: 5))
         app.buttons[AXID.addItemButton].tap()
 
