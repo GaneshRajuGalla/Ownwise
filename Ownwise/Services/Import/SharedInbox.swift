@@ -11,7 +11,10 @@ import Foundation
 /// `OwnwiseAppGroupID` key in Info.plist. With no key — or with the capability not yet granted —
 /// there is no container, so every operation here is a no-op and the app behaves exactly as it does
 /// today. See `docs/share-extension.md` for the capability steps.
-struct SharedInbox: Sendable {
+///
+/// `nonisolated` so both halves can use it: the extension is not the app, and a widget reads the
+/// snapshot from a background timeline. Pure Foundation, no shared state.
+nonisolated struct SharedInbox: Sendable {
 
     /// One thing the user shared, as the extension writes it.
     struct Entry: Codable, Sendable, Equatable {
@@ -29,16 +32,11 @@ struct SharedInbox: Sendable {
     /// The folder the inbox lives in, or nil when no App Group is configured.
     let root: URL?
 
-    static let appGroupIDInfoKey = "OwnwiseAppGroupID"
     static let manifestName = "manifest.json"
 
-    /// The inbox in the app's shared container; inert when there is no container.
+    /// The inbox in the app's shared container; inert when there is no container (`AppGroup`).
     static var `default`: SharedInbox {
-        let groupID = Bundle.main.object(forInfoDictionaryKey: appGroupIDInfoKey) as? String
-        let container = groupID.flatMap {
-            FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0)
-        }
-        return SharedInbox(root: container?.appending(path: "SharedInbox", directoryHint: .isDirectory))
+        SharedInbox(root: AppGroup.directory("SharedInbox"))
     }
 
     /// For tests, previews, and any caller that owns its own folder.

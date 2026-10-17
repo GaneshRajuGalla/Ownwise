@@ -137,6 +137,10 @@ final class ReminderScheduler {
 
     /// Removes only IDs we own, schedules the nearest `maxScheduled` leads.
     func rescheduleAll(items: [Item]) async {
+        // The reminder schedule and the widget's snapshot are two views of the same library, so they
+        // are rebuilt together: every path that keeps one truthful keeps the other truthful too (E2),
+        // instead of a second set of call sites that can drift. A no-op without an App Group.
+        SnapshotBuilder.refresh(items: items)
         let center = UNUserNotificationCenter.current()
         let pending = await center.pendingNotificationRequests()
         let ours = pending.map(\.identifier).filter { $0.hasPrefix("cov-") }
@@ -153,6 +157,11 @@ final class ReminderScheduler {
         content.title = title
         content.body = body
         content.sound = .default
+        // Which coverage this is about (B4), so an action taken on the notification knows what it
+        // is acting on without the user having to open the right item.
+        content.userInfo = [Notices.coverageKey: coverage.id.uuidString]
+        // Service reminders are the one case where there is something to do from the notification.
+        content.categoryIdentifier = coverage.kind == .servicePlan ? Notices.serviceCategory : Notices.expiryCategory
         let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
         return UNNotificationRequest(identifier: Self.notificationID(coverageID: coverage.id, lead: lead), content: content, trigger: trigger)

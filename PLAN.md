@@ -224,6 +224,38 @@ being `nil` in the shipping configuration.
 E2 widgets (`WidgetKit`, new extension target), E3 App Intents + `AppShortcutsProvider` (app
 target), B4 notification actions.
 
+### Phase 8 delivery log — 17 Oct 2026
+
+Two of the three parts need no capability at all, so they are finished and tested; the widget target
+does need one, and follows the Phase 7 pattern: the data half is built and inert, the extension is
+committed outside any target, and the runbook has the steps.
+
+| Gap | What changed |
+|---|---|
+| E3 | `OwnwiseIntents.swift`: `ExpiringSoonIntent` ("what's expiring" — the Home screen's Needs Attention, in words) and `AddItemIntent` (name, date, price, currency), plus `OwnwiseShortcuts` for Siri's suggested phrases. Every rule lives in `IntentAnswers` — a MainActor service that takes its container as a parameter — so the answers are unit-tested instead of being trapped inside a `perform()`: the 0/1/many wording is spelled out per case (never "1 items"), and **the free limit applies to Siri too**, so dictating a receipt is not a way around it. Intents declare `supportedModes = .background` rather than the deprecated `openAppWhenRun`, and carry no stored state. `Persistence.sharedContainer` is now the one container per process, so an intent that runs before any scene still reaches the store. `StoreEntitlement` reads the Pro entitlement for paths that have no store object, mirroring the store's own rule (verified, non-revoked). |
+| B4 | `Notices` + `NoticeActions` + `NoticeDelegate`: reminders now carry the coverage they are about, and a service reminder offers **Mark serviced** straight from the notification — the one case where there was something to *do* without opening the app. The delegate is the smallest possible `UIApplicationDelegate` (register categories at launch, act on an action, and show a reminder that arrives while the app is open, which the default silences). A background action does not bring the app forward, so the schedule is rebuilt there rather than waiting for a scene phase that may never change. |
+| E2 | `SharedSnapshot` (pure Foundation, so a widget target can add it without SwiftData) + `SnapshotBuilder` (the same "needs attention" rules as Home, with the dates kept) + `Extensions/OwnwiseWidget/OwnwiseWidget.swift` (complete, in **no target** yet) + `docs/widgets.md`. The app writes the snapshot from `ReminderScheduler.rescheduleAll`, so the widget and the reminders are rebuilt from the same events and cannot drift; long-expired cover is deliberately excluded. The widget reads a file rather than the store, because the app must stay the only writer. |
+
+Also in this phase: `AppGroup` — one lookup for `OwnwiseAppGroupID`, shared by the inbox and the
+snapshot — and `nonisolated` on the files that cross the app/extension boundary (`SharedInbox`,
+`SharedSnapshot`, `AppGroup`). That last one is not cosmetic: under
+`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` those members were main-actor by default, which the
+extension, the widget and `SharedInboxTests` would each have had to `await`. Verified against the SDK
+with the project's exact flags (`-swift-version 6 -default-isolation MainActor -strict-concurrency=complete`)
+before writing it: struct members are main-actor by default, `nonisolated` on the type fixes them all,
+and `perform()` is **nonisolated** in the App Intents protocol — so the answer services are hopped to
+deliberately via `@MainActor func perform()`.
+
+Tests: `IntentAnswersTests` (wording, the free limit, blank names, field/price mapping),
+`SnapshotTests` (ordering, service plans, expired cover excluded, the five-entry cap, file round trip,
+the inert no-container case), `NoticeActionsTests` (mark serviced by the id in the payload, unknown
+actions and missing coverages doing nothing) and a `ReminderSchedulerTests` case proving a request
+carries its coverage id and the right category.
+
+**Residual for the owner:** the widget target and the App Group (steps 1–3 of `docs/widgets.md`). Both
+E2 and E1 need the same group, so enabling it once lights up both. `E3` needs nothing: it ships in the
+app, so once this build is verified the store copy can honestly mention Siri and Shortcuts.
+
 ## Phase 9 — Value features
 
 E4 inventory value for insurance · E5 barcode/serial scanning · E6 service log · E7 configurable
@@ -255,7 +287,7 @@ F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
 | 5 — Structure & performance | **done — awaiting the owner's build** |
 | 6 — Test integrity | **done — awaiting the owner's build** |
 | 7 — Share Sheet import (`E1`) | **done in code; the extension target + App Group are the owner's step** |
-| 8 — Widgets + App Intents (`E2`, `E3`, `B4`) | not started |
+| 8 — Widgets + App Intents (`E2`, `E3`, `B4`) | **`E3` and `B4` done; the `E2` widget target + App Group are the owner's step** |
 | 9 — Value features (`E6`–`E11`) | not started |
 | 10 — Reach (`F1` iPad-compatible, `F2`) | not started |
 

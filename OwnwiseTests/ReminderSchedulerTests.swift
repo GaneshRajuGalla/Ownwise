@@ -123,6 +123,30 @@ struct ReminderSchedulerTests {
         #expect(scheduler.makeRequests(items: [item]).isEmpty)
     }
 
+    @Test("A reminder carries the coverage it is about, and service reminders their action")
+    func requestPayload() {
+        let scheduler = ReminderScheduler()
+        scheduler.configure(isPro: false, saved: .standard)
+
+        let washer = Item(name: "Washer")
+        let service = CoverageBuilder.make(kind: .servicePlan, start: .now, length: 1)
+        service.lastServiceDate = Calendar.current.date(byAdding: .day, value: -25, to: .now)
+        washer.coverages = [service]
+
+        let serviceRequest = scheduler.makeRequests(items: [washer])
+            .first { $0.identifier == ReminderScheduler.notificationID(coverageID: service.id, lead: 0) }
+        #expect(serviceRequest?.content.userInfo[Notices.coverageKey] as? String == service.id.uuidString)
+        #expect(serviceRequest?.content.categoryIdentifier == Notices.serviceCategory)
+
+        let tv = Item(name: "TV")
+        tv.coverages = [CoverageBuilder.make(kind: .manufacturer, start: .now, length: 12)]
+        let warrantyRequest = scheduler.makeRequests(items: [tv]).first
+        // Only service plans have something to do from the notification (B4).
+        #expect(warrantyRequest?.content.categoryIdentifier == Notices.expiryCategory)
+        #expect(warrantyRequest?.content.userInfo[Notices.coverageKey] as? String
+                == (tv.coverages ?? []).first?.id.uuidString)
+    }
+
     @Test("Custom one-off reminder is scheduled only for Pro")
     func customReminder() {
         let item = Item(name: "Water filter")

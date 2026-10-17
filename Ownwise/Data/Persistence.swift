@@ -52,6 +52,13 @@ enum Persistence {
         }
     }
 
+    /// The one container for this process.
+    ///
+    /// App Intents (E3) can run without any scene — Siri starts the process, not a view — so they
+    /// cannot use the container an `App` keeps in its state. The app itself uses this too, so there is
+    /// only ever one store open in the process.
+    @MainActor static let sharedContainer = makeContainer(inMemory: LaunchEnvironment.isUITesting)
+
     /// The CloudKit database to open with, and whether CloudKit was actually requested.
     private static func cloudKitDatabase() -> (database: ModelConfiguration.CloudKitDatabase, enabled: Bool) {
         guard let identifier = SyncSettings.containerIdentifier, SyncSettings.isEnabled else {

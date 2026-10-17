@@ -4,6 +4,10 @@ import BackgroundTasks
 
 @main
 struct OwnwiseApp: App {
+    /// Notifications need a delegate for two things SwiftUI has no hook for: registering the reminder
+    /// categories at launch, and acting on an action taken from a reminder (B4).
+    @UIApplicationDelegateAdaptor(NoticeDelegate.self) private var noticeDelegate
+
     let container: ModelContainer
 
     @State private var storeManager: StoreManager
@@ -11,7 +15,8 @@ struct OwnwiseApp: App {
     @State private var reminder: ReminderScheduler
 
     init() {
-        let c = Persistence.makeContainer(inMemory: LaunchEnvironment.isUITesting)
+        // One container per process: App Intents open the same one (`Persistence.sharedContainer`).
+        let c = Persistence.sharedContainer
         container = c
 
         let force: Bool? = LaunchEnvironment.forcePro ? true : (LaunchEnvironment.forceFree ? false : nil)
