@@ -27,6 +27,7 @@ struct ReviewView: View {
                 TextField("Total", text: $model.totalText).keyboardType(.decimalPad).accessibilityIdentifier(AXID.reviewTotalField)
                 TextField("Currency code", text: $model.currencyCode).accessibilityIdentifier(AXID.reviewCurrencyField)
                 TextField("Order number", text: $model.orderNumber).accessibilityIdentifier(AXID.reviewOrderField)
+                TextField("Tax / VAT number", text: $model.taxID).accessibilityIdentifier(AXID.reviewTaxIDField)
             }
             Section("Coverage") {
                 TextField("Warranty (months)", text: $model.warrantyMonthsText)

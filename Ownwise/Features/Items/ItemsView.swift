@@ -95,8 +95,7 @@ struct ItemsView: View {
     private func confirmDelete() {
         guard let item = pendingDelete else { return }
         pendingDelete = nil
-        modelContext.delete(item)
-        modelContext.saveOrReport()
+        LibraryActions.delete(item, in: modelContext)
         Task { await reminder.rescheduleFromContext(modelContext) }
     }
 }

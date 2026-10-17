@@ -98,6 +98,7 @@ struct ItemDetailView: View {
             ("Serial number", item.serialNumber),
             ("Model number", item.modelNumber),
             ("Order number", item.orderNumber),
+            ("Tax / VAT number", item.taxID),
             ("Support phone", item.supportPhone),
         ].filter { !$0.1.isEmpty }
         if !rows.isEmpty {
@@ -280,23 +281,19 @@ struct ItemDetailView: View {
     }
 
     /// Starts the next service interval from today, so reminders keep recurring.
+    /// The mutation itself belongs to `LibraryActions` (H3); rescheduling is this screen's job.
     func markServiced(_ c: Coverage) {
-        c.lastServiceDate = .now
-        modelContext.saveOrReport()
+        LibraryActions.markServiced(c, in: modelContext)
         Task { await reminder.rescheduleFromContext(modelContext) }
     }
 
     func deleteCoverage(_ c: Coverage) {
-        item.coverages = (item.coverages ?? []).filter { $0.id != c.id }
-        modelContext.delete(c)
-        modelContext.saveOrReport()
+        LibraryActions.delete(c, of: item, in: modelContext)
         Task { await reminder.rescheduleFromContext(modelContext) }
     }
 
     func deleteAttachment(_ att: Attachment) {
-        item.attachments = (item.attachments ?? []).filter { $0.id != att.id }
-        modelContext.delete(att)
-        modelContext.saveOrReport()
+        LibraryActions.delete(att, of: item, in: modelContext)
     }
 
     func addPhoto(_ selection: PhotosPickerItem) async {
@@ -304,9 +301,8 @@ struct ItemDetailView: View {
         guard let data = try? await selection.loadTransferable(type: Data.self),
               let image = UIImage(data: data),
               let jpeg = image.jpegData(compressionQuality: 0.7) else { return }
-        let attachment = Attachment(kind: .photo, data: jpeg, contentType: "public.jpeg")
-        item.attachments = (item.attachments ?? []) + [attachment]
-        modelContext.saveOrReport()
+        LibraryActions.addAttachment(data: jpeg, kind: .photo, contentType: "public.jpeg",
+                                     to: item, in: modelContext)
     }
 
     func call() {
@@ -324,8 +320,7 @@ struct ItemDetailView: View {
     func delete() {
         // Leave the screen first so nothing reads the deleted model.
         dismiss()
-        modelContext.delete(item)
-        modelContext.saveOrReport()
+        LibraryActions.delete(item, in: modelContext)
         Task { await reminder.rescheduleFromContext(modelContext) }
     }
 }

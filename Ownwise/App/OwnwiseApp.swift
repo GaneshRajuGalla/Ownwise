@@ -48,12 +48,14 @@ struct OwnwiseApp: App {
                 .environment(appLock)
                 .environment(reminder)
                 .task {
+                    #if DEBUG
                     if LaunchEnvironment.seedSampleData {
                         let ctx = container.mainContext
                         if ((try? ctx.fetchCount(FetchDescriptor<Item>())) ?? 0) == 0 {
                             Persistence.seedSampleData(into: ctx)
                         }
                     }
+                    #endif
                     await storeManager.start()
                     if LaunchEnvironment.isUITesting {
                         await reminder.grantPermissionForUITesting()

@@ -63,7 +63,7 @@ struct CoverageEditor: View {
                 }
             }
             .onChange(of: kind) { _, newKind in
-                lengthText = String(Self.defaultLength(newKind))
+                lengthText = String(CoverageBuilder.defaultLength(newKind))
                 start = newKind == .servicePlan ? .now : item.purchaseDate
                 // Presets differ per kind, so a carried-over choice would mislead.
                 leads = nil
@@ -77,10 +77,10 @@ struct CoverageEditor: View {
     }
 
     private var endDate: Date? {
-        length.map { Self.endDate(kind: kind, start: start, length: $0) }
+        length.map { CoverageBuilder.endDate(kind: kind, start: start, length: $0) }
     }
 
-    // MARK: Rules (unit-tested)
+    // MARK: Rules
 
     /// Return windows are counted in days; everything else in months.
     static func lengthLabel(_ kind: CoverageKind) -> LocalizedStringKey {
@@ -91,23 +91,11 @@ struct CoverageEditor: View {
         }
     }
 
-    static func defaultLength(_ kind: CoverageKind) -> Int {
-        switch kind {
-        case .returnWindow: 30
-        case .servicePlan: 6
-        default: 12
-        }
-    }
-
-    /// End of the coverage, or the next service date for service plans.
-    static func endDate(kind: CoverageKind, start: Date, length: Int, calendar: Calendar = .current) -> Date {
-        let component: Calendar.Component = kind == .returnWindow ? .day : .month
-        return calendar.date(byAdding: component, value: length, to: start) ?? start
-    }
-
     func add() {
         guard let length else { return }
-        let end = kind == .servicePlan ? Date.distantFuture : Self.endDate(kind: kind, start: start, length: length)
+        let end = kind == .servicePlan
+            ? Date.distantFuture
+            : CoverageBuilder.endDate(kind: kind, start: start, length: length)
         // Skip exact duplicates from double-taps. Service plans share `distantFuture` as their
         // end date, so they are compared by interval instead of date (C3).
         let duplicates = (item.coverages ?? []).contains { existing in
@@ -119,12 +107,9 @@ struct CoverageEditor: View {
             dismiss()
             return
         }
-        let c = Coverage(kind: kind, start: start, end: end)
+        // Construction is shared with every other screen that creates coverage (H4).
+        let c = CoverageBuilder.make(kind: kind, start: start, length: length)
         c.reminderLeadDays = leads
-        if kind == .servicePlan {
-            c.serviceIntervalMonths = length
-            c.lastServiceDate = start
-        }
         c.item = item
         item.coverages = (item.coverages ?? []) + [c]
         modelContext.saveOrReport()

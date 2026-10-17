@@ -1,6 +1,20 @@
 import Foundation
 import SwiftData
 
+/// v1: the schema the app first shipped with.
+///
+/// **Each schema version deliberately repeats every model.** SwiftData matches versions by their
+/// declared model types, so letting two `VersionedSchema`s share one model class is what breaks
+/// migration — the duplication in this folder is the pattern, not an accident, and must not be
+/// "de-duplicated".
+///
+/// Adding a V3:
+/// 1. Copy `SchemaV2.swift` to `SchemaV3.swift`, set `versionIdentifier` to `Schema.Version(3, 0, 0)`
+///    and make the model change there.
+/// 2. Add a stage to `MigrationPlan.swift`.
+/// 3. Point `Persistence.makeContainer` at `SchemaV3.self`.
+/// Keep every property optional or defaulted, every relationship optional, and use no
+/// `@Attribute(.unique)` — CloudKit requires all three.
 enum SchemaV1: VersionedSchema {
     static let versionIdentifier = Schema.Version(1, 0, 0)
     static var models: [any PersistentModel.Type] { [Item.self, Coverage.self, Attachment.self] }

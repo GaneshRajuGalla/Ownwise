@@ -145,6 +145,22 @@ H2 (move `Fixtures` out of production, `ClaimPackView` out of Services), H4 (one
 one coverage builder), H6 (stop full-table fetching on every screen), H3 (business logic out of
 views), H8 (README/code disagreement).
 
+### Phase 5 delivery log — 17 Oct 2026
+
+| Gap | What changed |
+|---|---|
+| H1 | **Kept, by design** (see the Corrections table): a versioned schema *must* repeat its models. `SchemaV1.swift` now says so, so the duplication is not "fixed" later, and carries the three-step "adding a V3" checklist (copy the file, add a stage to `MigrationPlan`, point `Persistence` at it) with the CloudKit constraints spelled out. |
+| H2 | `Fixtures` (Phase 4) and `Persistence.seedSampleData` are both `#if DEBUG`, so neither the fixture OCR text nor the sample library ships in a release build; both call sites are guarded too. `ClaimPackView` left `ExportService.swift` back in Phase 2. |
+| H3 | Home's chip counting and "needs attention" filtering moved into `LibraryInsights` (pure functions of items + a date, so they are tested directly). Item/coverage/attachment deletes, mark-serviced and adding a photo moved into `LibraryActions`, each owning its own save. Views keep only presentation and their own reminder reschedule. `claimPack()` needed nothing: it already calls `ExportService`. |
+| H4 | New `CoverageBuilder` is the single construction point: the end-date arithmetic (days for a return window, months otherwise), the per-kind defaults, and the fact that a service plan is stored open-ended with its interval and last-service date. `EditItemView`, `ReviewModel` and `CoverageEditor` all call it. `CoverageEditorTests` became `CoverageBuilderTests`, keeping its assertions and adding the stored shape (`distantFuture` + interval for plans). |
+| H5 | `taxID` was parsed, stored, backed up and **never populated or displayed** — a parsed value thrown away. It now flows parser → draft → review screen (editable) → item, and shows in Edit item and in Details. The rest of H5 (`analyzed` `AXID.homeScanCTA`, `authorizationGranted`, Settings' unused `@Query`) was removed in Phases 2–4; the audit script in Phase 3 keeps it that way. |
+| H6 | `ScanFlow` only needs a **count** to police the free limit, but fetched and hydrated the entire library to get one. It now calls `fetchCount`. The remaining `@Query`s genuinely need their rows, and `rescheduleFromContext` must read the library to rebuild the schedule — recorded as a deliberate residual rather than routed around. |
+| H8 | The README's monetization paragraph matched neither the code nor the store listing: it promised a "free up to 5 items" tier with service plans, CSV and Claim Pack behind Pro. It now states what ships (15 items free, every coverage kind free, CSV export and backup/restore free, Claim Pack watermarked on free; Pro = unlimited items, custom reminder timing, unwatermarked PDF, opt-in iCloud sync) and names `StoreManager.freeItemLimit` as the one place the cap lives. |
+
+Tests: `CoverageBuilderTests` (5), `LibraryInsightsTests` (3, including that long-expired coverage
+is never "attention"), `LibraryActionsTests` (5, including the cascade delete that the confirmation
+dialog's wording promises).
+
 ## Phase 6 — Test integrity
 
 I1 (`SearchFilterUITests` must assert unconditionally), I2 (ScanReview must assert the item
@@ -192,7 +208,7 @@ F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
 | 2 — Sync (`F3`) + trust (`A4`, `A5`) | **done in code; `F3` needs a capability step** |
 | 3 — Localisation & accessibility | **done — awaiting the owner's build** |
 | 4 — Scan quality (+ barcode, promoted) | **done — awaiting the owner's build** |
-| 5 — Structure & performance | not started |
+| 5 — Structure & performance | **done — awaiting the owner's build** |
 | 6 — Test integrity | not started |
 | 7 — Share Sheet import (`E1`) | not started |
 | 8 — Widgets + App Intents (`E2`, `E3`, `B4`) | not started |

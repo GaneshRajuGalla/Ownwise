@@ -21,6 +21,7 @@ final class ReviewModel {
     var returnLeads: [Int]?
     var warrantyLeads: [Int]?
     var orderNumber: String = ""
+    var taxID: String = ""
     var fieldsFromAI: Set<ExtractionDraft.Field> = []
     var ocrText: String = ""
     var pageImages: [Data] = []
@@ -40,6 +41,7 @@ final class ReviewModel {
         if let w = draft.warrantyMonths { warrantyMonthsText = String(w) }
         if let r = draft.returnDays { returnDaysText = String(r) }
         orderNumber = draft.orderNumber
+        taxID = draft.taxID
         fieldsFromAI = draft.fieldsFromAI
         ocrText = draft.ocrText
         pageImages = draft.pageImages
@@ -67,14 +69,16 @@ final class ReviewModel {
             item.priceMinor = Money.minorUnits(total, currencyCode: item.currencyCode)
         }
         item.orderNumber = orderNumber
+        item.taxID = taxID
+        // Coverage construction lives in one place (H4).
         var coverages: [Coverage] = []
         if let r = Int(returnDaysText), r > 0 {
-            let coverage = Coverage(kind: .returnWindow, start: purchaseDate, end: Calendar.current.date(byAdding: .day, value: r, to: purchaseDate) ?? purchaseDate)
+            let coverage = CoverageBuilder.make(kind: .returnWindow, start: purchaseDate, length: r)
             coverage.reminderLeadDays = returnLeads
             coverages.append(coverage)
         }
         if let w = Int(warrantyMonthsText), w > 0 {
-            let coverage = Coverage(kind: .manufacturer, start: purchaseDate, end: Calendar.current.date(byAdding: .month, value: w, to: purchaseDate) ?? purchaseDate)
+            let coverage = CoverageBuilder.make(kind: .manufacturer, start: purchaseDate, length: w)
             coverage.reminderLeadDays = warrantyLeads
             coverages.append(coverage)
         }

@@ -30,31 +30,19 @@ struct HomeView: View {
     }
 
     var chips: some View {
-        let coverages = items.flatMap { $0.coverages ?? [] }
-        var fine = 0, expiringReturn = 0, expiringOther = 0, serviceDue = 0
-        for cov in coverages {
-            switch coverageStatus(of: cov, now: .now) {
-            case .expiringSoon:
-                if cov.kind == .returnWindow { expiringReturn += 1 } else { expiringOther += 1 }
-            case .serviceDue:
-                serviceDue += 1
-            case .active:
-                fine += 1
-            case .expired:
-                break
-            }
-        }
+        // Counting lives in LibraryInsights, so it is testable and not recomputed inline (H3).
+        let counts = LibraryInsights.counts(of: items, now: .now)
         return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: DS.Space.m) {
-            chip("Return soon", "\(expiringReturn)", .orange) { selectedFilter = .expiring }
-            chip("Expiring", "\(expiringOther)", .orange) { selectedFilter = .expiring }
-            chip("Service due", "\(serviceDue)", .blue) { selectedFilter = .serviceDue }
-            chip("Covered", "\(fine)", .green) { selectedFilter = .active }
+            chip("Return soon", "\(counts.expiringReturn)", .orange) { selectedFilter = .expiring }
+            chip("Expiring", "\(counts.expiringOther)", .orange) { selectedFilter = .expiring }
+            chip("Service due", "\(counts.serviceDue)", .blue) { selectedFilter = .serviceDue }
+            chip("Covered", "\(counts.covered)", .green) { selectedFilter = .active }
         }
     }
 
     @State private var selectedFilter: SearchView.StatusFilter?
 
-    func chip(_ title: String, _ value: String, _ color: Color, onTap: @escaping () -> Void) -> some View {
+    func chip(_ title: LocalizedStringKey, _ value: String, _ color: Color, onTap: @escaping () -> Void) -> some View {
         Button(action: onTap) {
             SectionCard {
                 HStack {
@@ -69,14 +57,7 @@ struct HomeView: View {
 
     var needsAttention: some View {
         // Only things the user can still act on; long-expired coverage isn't "attention".
-        let flagged = items.filter { item in
-            (item.coverages ?? []).contains { c in
-                switch coverageStatus(of: c, now: .now) {
-                case .expiringSoon, .serviceDue: true
-                case .active, .expired: false
-                }
-            }
-        }
+        let flagged = LibraryInsights.needsAttention(in: items, now: .now)
         return SectionCard(title: "Needs attention") {
             if flagged.isEmpty {
                 Text("All covered. We'll let you know before anything expires.").foregroundStyle(.secondary).font(.subheadline)

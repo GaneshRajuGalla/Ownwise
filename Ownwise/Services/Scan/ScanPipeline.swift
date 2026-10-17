@@ -35,6 +35,8 @@ struct ScanPipeline: Sendable {
             ocrText: joined
         )
         draft.name = parsed.productName ?? ""
+        // The parser already reads a VAT/GST number; carry it through instead of dropping it (H5).
+        draft.taxID = parsed.taxID ?? ""
         // Compressing the pages is part of the heavy work, so it belongs off the main actor too.
         draft.pageImages = images.compactMap { $0.jpegData(compressionQuality: 0.7) }
 

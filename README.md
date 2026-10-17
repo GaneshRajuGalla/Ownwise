@@ -29,7 +29,7 @@ Generic "receipt + warranty vault" apps are saturated and most look dated or req
 5. **Smart scan in 40+ languages**, any currency, any tax format (VAT, GST, sales tax) — 100% on-device: Vision OCR + Apple Foundation Models. No account, no server, no analytics. Privacy label: *Data Not Collected*.
 6. **Liquid Glass native** design, SF fonts, Apple system colors — looks like Apple built it.
 
-Monetization: **Free up to 5 items. Ownwise Pro = one-time non-consumable**, US price tier $4.99 (App Store auto-localizes prices for every storefront): unlimited items, custom reminders (own days/time + one-off dates; free users get smart defaults: returns 3/1 days, warranties 30/7/1 days, 9:00), service plans, Claim Pack PDF, CSV export. App lock (Face ID) stays free for everyone. No subscription (zero server = zero recurring cost). Use App Store Connect price tiers; consider regional price adjustments for emerging markets.
+Monetization: **Free up to 15 items. Ownwise Pro = one-time non-consumable**, US price tier $4.99 (App Store auto-localizes prices for every storefront). Free covers every coverage kind (return window, manufacturer, extended, **service plan**, insurance), CSV export, full JSON backup and restore, and the Claim Pack PDF with a watermark. Pro adds unlimited items, custom reminder timing (exact days/time of day, one-off dates, apply to all), an unwatermarked Claim Pack PDF, and opt-in iCloud sync of your own private database. App lock (Face ID) stays free for everyone. The free item limit lives in one place: `StoreManager.freeItemLimit`. No subscription (zero server = zero recurring cost). Use App Store Connect price tiers; consider regional price adjustments for emerging markets.
 
 ## 2. Scope
 

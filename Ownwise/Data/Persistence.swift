@@ -91,7 +91,9 @@ enum Persistence {
         catch { fatalError("SwiftData cannot start even in memory: \(error)") }
     }
 
-    /// Seeds sample data for previews / `-seedSampleData` launch arg.
+    #if DEBUG
+    /// Seeds sample data for previews / `-seedSampleData` launch arg. Debug only, so the sample
+    /// library is not part of the shipping binary.
     @MainActor
     static func seedSampleData(into context: ModelContext) {
         let tv = Item(name: "55\" OLED TV")
@@ -115,4 +117,5 @@ enum Persistence {
         for item in [tv, laptop, washer] { context.insert(item) }
         context.saveOrReport()
     }
+    #endif
 }

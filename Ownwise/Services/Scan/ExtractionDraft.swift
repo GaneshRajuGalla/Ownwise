@@ -18,6 +18,8 @@ struct ExtractionDraft: Sendable {
     /// Scanned pages as JPEG, saved as receipt attachments (used by Claim Pack).
     var pageImages: [Data] = []
     var fieldsFromAI: Set<Field> = []
+    /// Tax/VAT/GST number printed on the receipt. Used by business expense claims.
+    var taxID: String = ""
 
     enum Field: String, Sendable, Hashable {
         case name, merchant, brand, modelNumber, serialNumber, category, purchaseDate, total, currency, warranty, returnWindow, orderNumber

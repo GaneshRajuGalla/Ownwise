@@ -19,6 +19,7 @@ struct EditItemView: View {
     @State private var returnDaysText = ""
     @State private var modelNumber = ""
     @State private var orderNumber = ""
+    @State private var taxID = ""
     @State private var priceText = ""
     @State private var returnLeads: [Int]?
     @State private var warrantyLeads: [Int]?
@@ -44,6 +45,8 @@ struct EditItemView: View {
                     .accessibilityIdentifier(AXID.itemModelField)
                 TextField("Order number", text: $orderNumber)
                     .accessibilityIdentifier(AXID.itemOrderField)
+                TextField("Tax / VAT number", text: $taxID)
+                    .accessibilityIdentifier(AXID.itemTaxIDField)
                 if item == nil {
                     TextField("Return window (days)", text: $returnDaysText)
                         .keyboardType(.numberPad)
@@ -90,6 +93,7 @@ struct EditItemView: View {
                     merchant = item.merchant; category = item.category; purchaseDate = item.purchaseDate
                     supportPhone = item.supportPhone; notes = item.notes
                     modelNumber = item.modelNumber; orderNumber = item.orderNumber
+                    taxID = item.taxID
                     priceText = item.priceMinor.map { Money.plainString($0, currencyCode: item.currencyCode) } ?? ""
                 }
             }
@@ -105,6 +109,7 @@ struct EditItemView: View {
             item.merchant = merchant; item.category = category; item.purchaseDate = purchaseDate
             item.supportPhone = supportPhone; item.notes = notes
             item.modelNumber = modelNumber; item.orderNumber = orderNumber
+            item.taxID = taxID
             item.priceMinor = parsedPrice(currencyCode: item.currencyCode)
         } else {
             let new = Item(name: name)
@@ -112,16 +117,16 @@ struct EditItemView: View {
             new.category = category; new.purchaseDate = purchaseDate
             new.supportPhone = supportPhone; new.notes = notes
             new.modelNumber = modelNumber; new.orderNumber = orderNumber
+            new.taxID = taxID
             new.priceMinor = parsedPrice(currencyCode: new.currencyCode)
+            // Coverage construction lives in one place (H4).
             if let d = Int(returnDaysText), d > 0 {
-                let cov = Coverage(kind: .returnWindow, start: purchaseDate,
-                                   end: Calendar.current.date(byAdding: .day, value: d, to: purchaseDate) ?? purchaseDate)
+                let cov = CoverageBuilder.make(kind: .returnWindow, start: purchaseDate, length: d)
                 cov.reminderLeadDays = returnLeads
                 new.coverages = (new.coverages ?? []) + [cov]
             }
             if let m = Int(warrantyMonthsText), m > 0 {
-                let cov = Coverage(kind: .manufacturer, start: purchaseDate,
-                                   end: Calendar.current.date(byAdding: .month, value: m, to: purchaseDate) ?? purchaseDate)
+                let cov = CoverageBuilder.make(kind: .manufacturer, start: purchaseDate, length: m)
                 cov.reminderLeadDays = warrantyLeads
                 new.coverages = (new.coverages ?? []) + [cov]
             }

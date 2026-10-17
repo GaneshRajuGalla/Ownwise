@@ -9,8 +9,11 @@ import VisionKit
 struct ScanFlow: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.modelContext) private var modelContext
     @Environment(StoreManager.self) private var store
-    @Query private var items: [Item]
+    /// Only the count is needed to police the free limit, so the screen asks for a count instead
+    /// of fetching and hydrating every item (H6).
+    @State private var itemCount = 0
     @State private var showPaywall = false
     @State private var isProcessing = false
     @State private var draft: ExtractionDraft?
@@ -67,7 +70,7 @@ struct ScanFlow: View {
             Group {
                 if let problem {
                     problemView(problem)
-                } else if draft == nil && !store.canAddItem(count: items.count) {
+                } else if draft == nil && !store.canAddItem(count: itemCount) {
                     EmptyStateView(title: "Free limit reached",
                                    message: "The free version keeps up to \(StoreManager.freeItemLimit) items. Unlock Pro to add unlimited items.",
                                    systemImage: "lock",
@@ -88,6 +91,7 @@ struct ScanFlow: View {
             .toolbar(showCamera ? .hidden : .visible, for: .navigationBar)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() }.accessibilityIdentifier(AXID.cancelButton) } }
             .sheet(isPresented: $showPaywall) { PaywallView() }
+            .task { itemCount = (try? modelContext.fetchCount(FetchDescriptor<Item>())) ?? 0 }
         }
     }
 
