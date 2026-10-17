@@ -9,36 +9,11 @@ struct SearchView: View {
         _statusFilter = State(initialValue: statusFilter)
     }
 
-    enum StatusFilter: String, CaseIterable, Identifiable {
-        case all = "All"
-        case active = "Active"
-        case expiring = "Expiring"
-        case expired = "Expired"
-        case serviceDue = "Service due"
-        var id: String { rawValue }
-    }
+    /// The filter cases live with the matching rules, so they can be tested directly (I4).
+    typealias StatusFilter = LibrarySearch.StatusFilter
 
     var results: [Item] {
-        items.filter { item in
-            let matchesQuery = query.isEmpty
-                || item.name.localizedStandardContains(query)
-                || item.brand.localizedStandardContains(query)
-                || item.modelNumber.localizedStandardContains(query)
-                || item.serialNumber.localizedStandardContains(query)
-                || item.merchant.localizedStandardContains(query)
-                || item.orderNumber.localizedStandardContains(query)
-                || (item.attachments ?? []).contains { $0.ocrText.localizedStandardContains(query) }
-            let matchesStatus: Bool = {
-                switch statusFilter {
-                case .all: return true
-                case .active: return (item.coverages ?? []).contains { coverageStatus(of: $0, now: .now) == .active }
-                case .expiring: return (item.coverages ?? []).contains { if case .expiringSoon = coverageStatus(of: $0, now: .now) { true } else { false } }
-                case .expired: return (item.coverages ?? []).contains { coverageStatus(of: $0, now: .now) == .expired }
-                case .serviceDue: return (item.coverages ?? []).contains { coverageStatus(of: $0, now: .now) == .serviceDue }
-                }
-            }()
-            return matchesQuery && matchesStatus
-        }
+        LibrarySearch.filter(items, query: query, status: statusFilter, now: .now)
     }
 
     var body: some View {

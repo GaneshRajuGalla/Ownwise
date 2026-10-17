@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import SwiftData
 @testable import Ownwise
 
 @MainActor
@@ -66,5 +67,29 @@ struct ReminderPreferencesTests {
         var p = ReminderPreferences.standard
         p.warrantyLeads = [1, 45, 30]
         #expect(p.leads(for: .manufacturer) == [45, 30, 1])
+    }
+
+    @Test("Bulk apply reaches every coverage of that kind, and nothing else")
+    func applyToEveryCoverageOfTheKind() throws {
+        let container = Persistence.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let edited = Coverage(kind: .manufacturer, start: .now, end: .now)
+        let sameKindHere = Coverage(kind: .manufacturer, start: .now, end: .now)
+        let otherKind = Coverage(kind: .returnWindow, start: .now, end: .now)
+        let editedItem = Item(name: "Laptop")
+        editedItem.coverages = [edited, sameKindHere, otherKind]
+        let olderItem = Item(name: "TV")
+        olderItem.coverages = [Coverage(kind: .manufacturer, start: .now, end: .now)]
+        context.insert(editedItem)
+        context.insert(olderItem)
+        context.saveOrReport()
+
+        let changed = ReminderPreferences.apply([1, 30], toKind: .manufacturer, except: edited, in: context)
+
+        #expect(changed == 2, "the other warranty here plus the one on the older item")
+        #expect(edited.reminderLeadDays == [30, 1], "the edited coverage too, sorted longest first")
+        #expect(sameKindHere.reminderLeadDays == [30, 1])
+        #expect((olderItem.coverages ?? []).first?.reminderLeadDays == [30, 1])
+        #expect(otherKind.reminderLeadDays == nil, "a return window keeps its own timing")
     }
 }

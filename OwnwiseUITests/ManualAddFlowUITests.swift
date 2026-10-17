@@ -41,26 +41,30 @@ final class ManualAddFlowUITests: XCTestCase {
         if app.navigationBars.buttons.count > 0 {
             app.navigationBars.buttons.element(boundBy: 0).tap()
         }
-        let listApp = app
-        let rowText = listApp.staticTexts["Sample TV"].firstMatch
-        if rowText.waitForExistence(timeout: 5) {
-            // Swiping reveals Delete, but nothing is destroyed until it is confirmed.
-            rowText.swipeLeft()
-            let swipeDelete = app.buttons[AXID.deleteSwipeButton].firstMatch
-            XCTAssertTrue(swipeDelete.waitForExistence(timeout: 3))
-            swipeDelete.tap()
+        // I2: this used to be an `if let` around the whole delete flow, so a missing row made the
+        // test pass without asserting anything. The row must be there.
+        let rowText = app.staticTexts["Sample TV"].firstMatch
+        XCTAssertTrue(rowText.waitForExistence(timeout: 5), "the saved item is listed before we try to delete it")
 
-            let cancel = app.buttons["Cancel"].firstMatch
-            XCTAssertTrue(cancel.waitForExistence(timeout: 3), "Deleting an item asks for confirmation")
-            cancel.tap()
-            XCTAssertTrue(app.staticTexts["Sample TV"].waitForExistence(timeout: 3), "Cancelling keeps the item")
+        // Swiping reveals Delete, but nothing is destroyed until it is confirmed.
+        rowText.swipeLeft()
+        let swipeDelete = app.buttons[AXID.deleteSwipeButton].firstMatch
+        XCTAssertTrue(swipeDelete.waitForExistence(timeout: 3))
+        swipeDelete.tap()
 
-            rowText.swipeLeft()
-            app.buttons[AXID.deleteSwipeButton].firstMatch.tap()
-            let confirm = app.buttons[AXID.deleteItemButton].firstMatch
-            XCTAssertTrue(confirm.waitForExistence(timeout: 3))
-            confirm.tap()
-        }
-        XCTAssertFalse(app.staticTexts["Sample TV"].waitForExistence(timeout: 3))
+        // The dialog's Cancel label is supplied by iOS, so it is matched as text (see I5).
+        let cancel = app.buttons["Cancel"].firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 3), "Deleting an item asks for confirmation")
+        cancel.tap()
+        XCTAssertTrue(rowText.waitForExistence(timeout: 3), "Cancelling keeps the item")
+
+        rowText.swipeLeft()
+        app.buttons[AXID.deleteSwipeButton].firstMatch.tap()
+        let confirm = app.buttons[AXID.deleteItemButton].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 3))
+        confirm.tap()
+
+        XCTAssertTrue(app.staticTexts["Sample TV"].waitForNonExistence(timeout: 5),
+                      "confirming deletes it")
     }
 }

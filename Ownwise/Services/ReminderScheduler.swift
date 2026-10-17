@@ -44,6 +44,8 @@ final class ReminderScheduler {
     }
 
     func requestPermissionIfNeeded() async {
+        // A refused permission cannot be produced on demand, so UI tests can ask for it (I4).
+        if LaunchEnvironment.forceNotificationsDenied { authorizationGranted = false; return }
         // UI tests never show the system prompt (it would block the flow).
         if LaunchEnvironment.isUITesting { authorizationGranted = true; return }
         let center = UNUserNotificationCenter.current()
@@ -57,12 +59,14 @@ final class ReminderScheduler {
 
     /// Reads the current permission without prompting (used at launch).
     func refreshAuthorizationStatus() async {
+        if LaunchEnvironment.forceNotificationsDenied { authorizationGranted = false; return }
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         authorizationGranted = settings.authorizationStatus == .authorized
     }
 
     func grantPermissionForUITesting() async {
-        authorizationGranted = true
+        // …unless the test asked for the refused state, so Settings' explanation is testable (I4).
+        authorizationGranted = !LaunchEnvironment.forceNotificationsDenied
     }
 
     /// Fetches all items from the context and rebuilds the schedule.

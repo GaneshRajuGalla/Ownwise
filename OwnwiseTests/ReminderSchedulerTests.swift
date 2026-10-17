@@ -69,6 +69,60 @@ struct ReminderSchedulerTests {
         #expect(scheduler.customRemindersEnabled == false)
     }
 
+    @Test("One reminder per lead, soonest first, with the singular spelled out")
+    func requestsPerLead() {
+        let scheduler = ReminderScheduler()
+        scheduler.configure(isPro: false, saved: .standard)
+        let item = Item(name: "Kettle")
+        let end = Calendar.current.date(byAdding: .day, value: 40, to: .now)!
+        let coverage = Coverage(kind: .manufacturer, start: .now, end: end)
+        item.coverages = [coverage]
+
+        let requests = scheduler.makeRequests(items: [item])
+        // Free defaults before a warranty ends are 30, 7 and 1 days.
+        #expect(requests.map(\.identifier)
+                == [30, 7, 1].map { ReminderScheduler.notificationID(coverageID: coverage.id, lead: $0) })
+
+        let bodies = requests.map(\.content.body)
+        #expect(bodies[0] == "Kettle: manufacturer warranty ends in 30 days.")
+        #expect(bodies[1] == "Kettle: manufacturer warranty ends in 7 days.")
+        #expect(requests[2].content.title == "Ending soon")
+        #expect(bodies[2] == "Kettle: manufacturer warranty ends in 1 day.")
+        // I4/G2 regression: concatenating a plural suffix produced "1 days".
+        #expect(!bodies.contains { $0.contains("1 days") })
+
+        let fireDates = requests.map { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() ?? .distantFuture }
+        #expect(fireDates == fireDates.sorted(), "the soonest reminder is scheduled first")
+    }
+
+    @Test("A service plan is announced from its next service date")
+    func servicePlanReminder() {
+        let scheduler = ReminderScheduler()
+        scheduler.configure(isPro: false, saved: .standard)
+        let item = Item(name: "Washer")
+        let coverage = CoverageBuilder.make(kind: .servicePlan, start: .now, length: 1)
+        item.coverages = [coverage]
+
+        let requests = scheduler.makeRequests(items: [item])
+        // The only free lead for a service plan is "on the day".
+        #expect(requests.count == 1)
+        #expect(requests[0].content.title == "Service due")
+        #expect(requests[0].content.body == "Washer is due for service.")
+        #expect(!requests[0].content.body.contains("0 days"))
+    }
+
+    @Test("Ended coverage and an interval-less service plan schedule nothing")
+    func nothingToAnnounce() {
+        let scheduler = ReminderScheduler()
+        scheduler.configure(isPro: false, saved: .standard)
+        let item = Item(name: "Kettle")
+        item.coverages = [
+            Coverage(kind: .servicePlan, start: .now, end: .distantFuture),   // no interval
+            Coverage(kind: .manufacturer, start: .now, end: .now.addingTimeInterval(-86_400)),
+        ]
+        #expect(scheduler.makeRequests(items: [item]).isEmpty)
+    }
+
     @Test("Custom one-off reminder is scheduled only for Pro")
     func customReminder() {
         let item = Item(name: "Water filter")

@@ -64,20 +64,11 @@ struct CoverageReminderEditor: View {
 
     /// Copies this choice onto every coverage of the same kind, so it applies
     /// to existing items too — not just the next one that gets added.
+    /// The rule itself lives in `ReminderPreferences.apply`, where it is tested (I4).
     private func applyToAll() {
         guard let leads else { return }
-        let items = (try? modelContext.fetch(FetchDescriptor<Item>())) ?? []
-        var changed = 0
-        for item in items {
-            for c in item.coverages ?? [] where c.kind == coverage.kind {
-                guard c.id != coverage.id else { continue }
-                c.reminderLeadDays = leads
-                changed += 1
-            }
-        }
-        coverage.reminderLeadDays = leads
-        modelContext.saveOrReport()
+        appliedCount = ReminderPreferences.apply(leads, toKind: coverage.kind,
+                                                 except: coverage, in: modelContext)
         Task { await reminder.rescheduleFromContext(modelContext) }
-        appliedCount = changed
     }
 }

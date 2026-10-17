@@ -27,4 +27,8 @@ enum LaunchEnvironment {
     /// Forces "the scan read no text", so the empty-scan screen can be tested without supplying
     /// a blank image.
     static var forceScanUnreadable: Bool { args.contains("-forceScanUnreadable") }
+
+    /// Forces the notifications-refused state, so Settings' explanation and the "turn them on"
+    /// route can be tested even though a system permission cannot be refused on demand (I4).
+    static var forceNotificationsDenied: Bool { args.contains("-forceNotificationsDenied") }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// When coverage reminders fire. Free users always get `.standard`
 /// (smart defaults); Ownwise Pro users can choose their own days and time.
@@ -88,10 +89,32 @@ struct ReminderPreferences: Codable, Sendable, Equatable {
         return days
     }
 
+    /// Copies one choice onto every coverage of the same kind and returns how many changed.
+    ///
+    /// This is "use this for every warranty" from the reminder editor. It lives here rather than in
+    /// the view so the rule — same kind only, the edited coverage included, everything saved once —
+    /// is unit-tested (I4), because getting it wrong silently changes reminders the user never
+    /// opened.
+    @MainActor
+    static func apply(_ leads: [Int], toKind kind: CoverageKind, except coverage: Coverage,
+                      in context: ModelContext) -> Int {
+        let normalized = normalizedLeads(leads)
+        var changed = 0
+        for item in (try? context.fetch(FetchDescriptor<Item>())) ?? [] {
+            for existing in item.coverages ?? [] where existing.kind == kind {
+                guard existing.id != coverage.id else { continue }
+                existing.reminderLeadDays = normalized
+                changed += 1
+            }
+        }
+        coverage.reminderLeadDays = normalized
+        context.saveOrReport()
+        return changed
+    }
+
     /// The global setting, normalized exactly like a per-coverage choice so the
     /// chips an item shows lit are always the reminders that actually fire.
-    func leads(for kind: CoverageKind) -> [Int] {
-        switch kind {
+    func leads(for kind: CoverageKind) -> [Int] {        switch kind {
         case .returnWindow: return Self.normalizedLeads(returnLeads)
         case .manufacturer, .extended, .insurance: return Self.normalizedLeads(warrantyLeads)
         case .servicePlan: return [0]

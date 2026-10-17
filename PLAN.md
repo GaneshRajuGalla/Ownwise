@@ -168,6 +168,24 @@ exists; ManualAdd/Export assertions made real), I3 (`ReceiptParserTests` must as
 I4 (cover OCRService, AIExtractor, AppLock, `rescheduleAll`, `applyToAll`, Home chips, search
 filters, the Nth-item limit).
 
+### Phase 6 delivery log — 17 Oct 2026
+
+| Gap | What changed |
+|---|---|
+| I1 | `SearchFilterUITests` no longer hides every assertion inside `if` guards — it failed silently whenever the tab or field did not appear. It now opens the search tab and field with hard `XCTAssertTrue`s, filters by serial and by merchant, and waits for the *exclusion* of the other rows before asserting the match, so it can never pass on the pre-filter render. |
+| I2 | `ScanReviewFlowUITests` ended at `save.tap()`; it now waits for the review sheet to close and then finds the item in the library. `ManualAddFlowUITests`' whole delete flow sat behind an `if rowText.waitForExistence`, so a missing row made it pass with no assertions — the row is now asserted, cancel is asserted to keep the item, and confirm is asserted to remove it. `ExportFlowUITests.assertShareSheet` accepted a private UIKit class name as an alternative, so it could pass with none of the app's own sheet on screen; it now asserts the identifier `ShareSheet` puts on it. |
+| I3 | `ReceiptParserTests` asserted `!= nil` for merchant and warranty: a wrong merchant passed. Merchant, warranty months and return window are now asserted *exactly* for every fixture (`String(localized:)`-free comparison, case-insensitive because receipts print `TARGET`). Two fixture expectations were simply wrong — listed a 14- and a 30-day return window for receipts that state no return wording at all — and are corrected to `nil`: the parser must not invent a window. Added exact purchase-date assertions in three formats and a `taxID` pair (read when stated, never when not). |
+| I4 | The rules are now where they can be tested, not inside views: `LibrarySearch` (query fields incl. receipt OCR text, and every status filter) and `ReminderPreferences.apply` (bulk-apply) were extracted and have unit tests; `makeRequests` gained tests for one-reminder-per-lead ordering, the spelled-out singular (the `"1 days"` regression), service-plan wording, and that ended coverage and an interval-less plan schedule nothing; `AppLock` gained an injectable clock and tests for the app-switcher grace period and for turning the lock off. The free-limit boundary was already asserted in `StoreManagerTests`. A **`-forceNotificationsDenied` launch argument** makes the refused-permission state testable (B1's Settings row and its route to system Settings), with a new `NotificationsPermissionUITests` covering both the denied and the allowed case. |
+| I5 | Done in Phase 3 (identifiers, not visible English). The one documented exception is the `confirmationDialog` Cancel label, which iOS supplies and which drops identifiers on alert actions. |
+
+**Deliberate residuals, not oversights.** `OCRService` and `AIExtractor` are not unit-tested: one
+needs Vision's recognition model and the other Apple Intelligence, and neither's output is
+deterministic enough for a hermetic test — a flaky test here would be noise, not protection. What
+*is* hermetic around them is covered: the parser (10 fixtures, exact values), `ScanPipeline.merge`
+(AI-vs-parser precedence), `Money`, and the scan failure states (Phase 4's `ScanFailureUITests`).
+`ReminderScheduler.rescheduleAll` itself is a thin loop over the tested `makeRequests` plus
+`UNUserNotificationCenter.add`, which cannot be unit-tested without the system's permission prompt.
+
 ## Phase 7 — Capture path (new capability)
 
 E1 **Share Extension** so a receipt can be sent from Mail/Safari/Amazon. Note: an extension
@@ -209,7 +227,7 @@ F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
 | 3 — Localisation & accessibility | **done — awaiting the owner's build** |
 | 4 — Scan quality (+ barcode, promoted) | **done — awaiting the owner's build** |
 | 5 — Structure & performance | **done — awaiting the owner's build** |
-| 6 — Test integrity | not started |
+| 6 — Test integrity | **done — awaiting the owner's build** |
 | 7 — Share Sheet import (`E1`) | not started |
 | 8 — Widgets + App Intents (`E2`, `E3`, `B4`) | not started |
 | 9 — Value features (`E6`–`E11`) | not started |
@@ -228,7 +246,7 @@ Closed: **A1, A2, A3, A6, B1, B2, C1**, plus the dead `@Query` from H5.
 | A3 | `ReviewModel.save` uses `ReceiptParser().parseAmount`, the same parser as the edit screen, instead of `Double(text.replacingOccurrences(of: ",", with: "."))` — which turned `1,299.50` into 1.2995 and lost the price. | `ReviewModelTests.parsesTypedTotal` + empty-total case |
 | C1 | New `orderedConcurrentMap` (indexed task group); `ScanPipeline` OCRs pages concurrently **and** keeps page order, so a multi-page receipt can no longer be parsed out of order. | `OrderedConcurrentMapTests` — 20 items finishing in reverse order still come back in order |
 | A6 | List swipe-delete now stages the item and asks for confirmation before deleting (cascade takes coverages, receipts and photos with it). The detail screen already had a dialog; the list did not. New `AXID.deleteSwipeButton`; the dialog reuses `AXID.deleteItemButton`. | `ManualAddFlowUITests` now swipes → cancels (item survives) → confirms (item goes) |
-| B1 | Settings → Reminders states the permission: when notifications are denied it explains in one line and offers "Turn on notifications" → the app's page in the Settings app (`UIApplication.openSettingsURLString` via `@Environment(\.openURL)`, no force-unwrap). New `AXID.settingsNotificationsButton`. | Covered by the existing Settings UI tests; a forced-denied test needs a launch argument (Phase 6, I4) |
+| B1 | Settings → Reminders states the permission: when notifications are denied it explains in one line and offers "Turn on notifications" → the app's page in the Settings app (`UIApplication.openSettingsURLString` via `@Environment(\.openURL)`, no force-unwrap). New `AXID.settingsNotificationsButton`. | Done, and testable: `-forceNotificationsDenied` (Phase 6, I4) produces the refused state, and `NotificationsPermissionUITests` asserts the row appears, is tappable, and sends the app to the background (system Settings) |
 | B2 | `RootView` refreshes the notification permission **and** rebuilds the schedule whenever the app becomes active, so a permission granted in Settings, or reminders the system dropped, are picked up (README §7.5). | Existing scheduler tests; the activation path itself is verified by hand |
 
 Files: `Data/Persistence.swift`, `Data/ModelContext+Saving.swift` (new), `Services/OrderedConcurrentMap.swift`

@@ -16,9 +16,14 @@ final class ExportFlowUITests: XCTestCase {
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", AXID.exportClaimPackPrefix)).firstMatch
     }
 
+    /// The sheet the app presents, matched by the identifier `ShareSheet` puts on it.
+    ///
+    /// I2: this used to accept a private UIKit class name (`ActivityListView`) as an alternative,
+    /// so it could pass without the app's own sheet being on screen at all — and could hide a
+    /// regression in `ShareSheet` itself.
     private func assertShareSheet(_ app: XCUIApplication) {
         let sheet = app.descendants(matching: .any)[AXID.shareSheet]
-        XCTAssertTrue(sheet.waitForExistence(timeout: 10) || app.otherElements["ActivityListView"].waitForExistence(timeout: 2))
+        XCTAssertTrue(sheet.waitForExistence(timeout: 10), app.debugDescription)
     }
 
     /// Raw export and backups are free: a paywall between a user and their own data is exactly

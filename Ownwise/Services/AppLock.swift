@@ -6,6 +6,8 @@ import Observation
 @MainActor
 final class AppLock {
     private static let enabledKey = "appLockEnabled"
+    /// A quick trip to the app switcher must not demand Face ID again.
+    static let gracePeriod: TimeInterval = 60
 
     var isLocked: Bool = false
     /// Stored (not computed) so SwiftUI observes changes; persisted to UserDefaults.
@@ -13,6 +15,9 @@ final class AppLock {
         didSet { UserDefaults.standard.set(isEnabled, forKey: Self.enabledKey) }
     }
     private var backgroundedAt: Date?
+    /// Injectable clock, so the "brief trip to the app switcher" grace period can be tested
+    /// without waiting a minute (I4).
+    var now: () -> Date = { .now }
 
     init() {
         isEnabled = UserDefaults.standard.bool(forKey: Self.enabledKey)
@@ -40,10 +45,10 @@ final class AppLock {
         if await authenticate(reason: String(localized: "Unlock Ownwise")) { isLocked = false }
     }
 
-    func didEnterBackground() { backgroundedAt = .now }
+    func didEnterBackground() { backgroundedAt = now() }
     func didBecomeActive() {
         guard isEnabled, !LaunchEnvironment.isUITesting else { return }
-        if let bg = backgroundedAt, Date.now.timeIntervalSince(bg) > 60 { isLocked = true }
+        if let bg = backgroundedAt, now().timeIntervalSince(bg) > Self.gracePeriod { isLocked = true }
         backgroundedAt = nil
     }
 
