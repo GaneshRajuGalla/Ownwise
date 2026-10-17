@@ -289,6 +289,13 @@ overall badge, and the week/month labels). The stored-horizon test deliberately 
 validator instead of writing to `UserDefaults`, so it cannot change what the other tests see — the same
 reason it is not exercised end to end.
 
+**Store copy, once this build is verified** (not before: describing a feature the build does not
+deliver is a 2.3.1 risk, and these are one-line additions to `metadata/version/1.0/en-US.json`):
+scan-to-serial ("point the camera at the barcode and the serial is filled in"), the inventory report
+("a dated list of what you own and what you paid, for insurance — free"), the resale pack ("or a
+Resale Pack when you sell it on") and, from Phase 8, Siri/Shortcuts plus "mark a service done from the
+reminder itself". The free tier and the Pro list in the description still match the code exactly.
+
 ### Deliberately not done yet, with the design
 
 | Gap | Why not in this build | The design, ready to execute |
@@ -301,13 +308,37 @@ reason it is not exercised end to end.
 
 F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
 
+### Phase 10 status — 17 Oct 2026: **waiting on the owner, on purpose**
+
+Neither of these is a code-only change, and both of them can *block a submission* rather than unlock it,
+which is the opposite of what this build needs while the account is still clearing agreements and the
+app has two unresolved 2.1 rejections. What each one actually needs:
+
+| Gap | Why it is not done here | What it takes |
+|---|---|---|
+| F1 iPad / Mac | The app is already adaptive (`NavigationStack`, `List`, sheets, `Grid`, no fixed frames), and the change itself is one line: `TARGETED_DEVICE_FAMILY = 1` → `"1,2"` for the app target. But **an app that runs on iPad must ship 13-inch iPad screenshots**, so flipping that line today makes the version un-submittable until those screenshots exist — I cannot take them, because they need the app built and run on an iPad simulator. "Designed for iPad" on Mac then follows from the same flag plus the ASC availability toggle. | Flip the flag, run it on an iPad simulator (check the scan flow and the item detail action row first), capture 13-inch screenshots, then enable iPad in the version and optionally "iOS app on Mac". |
+| F2 de/fr/es/ja/pt-BR | The catalogue is ready for translators — Phase 3 moved every string into `Localizable.xcstrings` with comments, added the grammar-agreement cases, and made formatting follow the locale (`Money`, dates, `String(localized:)` with spelled-out plural branches). What is missing is the translations themselves. Machine-translating ~400 UI strings, including the permission prompts and the paywall, would be a quality risk I cannot check from here, and half-translated UI is a support burden rather than reach. | Translate `Localizable.xcstrings` in Xcode (it shows the source string and its comment), starting with the permission prompts, the paywall and the reminder wording. Then add each locale in ASC with its own metadata and screenshots. The German/French/Spanish wording in this codebase's comments and the `.. 17 Oct 2026` dates are English on purpose; the UI strings are what matter. |
+
+If you want either of them, say which and I will do the code half immediately: for F2 that means
+filling the catalogue and reading it back for consistency, for F1 flipping the flag and listing exactly
+what to look at on the iPad.
+
 ## Awaiting the owner's decision
 
 - **F3** iCloud sync: still your call to *start*, but the evidence is now clear that it is the
   top-requested thing in the category and that it does not break the privacy promise. Family
   sharing of one inventory is a separate, later step (needs `CKSharingSupported` + accept flow).
-- **D2** free item cap: evidence says 5 matches the norm, so this is optional.
-- **A5** confirm raw export becomes free (I recommend yes).
+- **E2/E1 capabilities**: the App Group (`docs/widgets.md` steps 1–3, shared with
+  `docs/share-extension.md`). One capability lights up both.
+- **E6 + E8 together, one schema V3**: the service log and claim status both need a new model, so
+  they should land in a single migration. Design in the Phase 9 table above. Worth doing *after* the
+  current build is confirmed, because a migration is the one change that can cost a user their library.
+- **E11 bulk actions**: multi-select in the item list; designed in the Phase 9 table.
+- **F1 iPad/Mac** and **F2 de/fr/es/ja/pt-BR**: see the Phase 10 table — both are ready to do, and
+  both need something only you can supply (13-inch iPad screenshots; translations).
+- **D2** free item cap: implemented as **15** (Phase 2). If you prefer 5, it is one line in
+  `StoreManager.freeItemLimit` — and the store description must be changed with it.
+- **A5** raw export is free (Phase 2); say if you want it gated again.
 
 ## Status
 
@@ -324,7 +355,7 @@ F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
 | 7 — Share Sheet import (`E1`) | **done in code; the extension target + App Group are the owner's step** |
 | 8 — Widgets + App Intents (`E2`, `E3`, `B4`) | **`E3` and `B4` done; the `E2` widget target + App Group are the owner's step** |
 | 9 — Value features (`E4`, `E5`, `E7`, `E9`, `E10`) | **done; `E6`, `E8` (schema V3) and `E11` (multi-select) designed and deferred** |
-| 10 — Reach (`F1` iPad-compatible, `F2`) | not started |
+| 10 — Reach (`F1` iPad-compatible, `F2`) | **not started — both need something only the owner can supply (see the Phase 10 table)** |
 
 ---
 
