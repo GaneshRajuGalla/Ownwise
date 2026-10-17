@@ -5,7 +5,7 @@ import Foundation
 /// Sync is deliberately gated on the build actually carrying the CloudKit entitlement, which is
 /// advertised through the `OwnwiseICloudContainer` Info.plist key. Until that key is set, Ownwise
 /// is local-only, the Settings row stays hidden, and the app never promises something its App ID
-/// has not been granted. `Docs/iCloud-sync.md` has the three steps that turn it on.
+/// has not been granted. `docs/iCloud-sync.md` has the three steps that turn it on.
 enum SyncSettings {
     private static let enabledKey = "iCloudSyncEnabled"
 

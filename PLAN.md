@@ -193,6 +193,32 @@ cannot see the app's SwiftData container, so this needs an **App Group** + entit
 shared store location — an architecture change, not just a new file. Apple: "Sharing data between
 your app and its extensions". Plan it deliberately, do not rush it.
 
+### Phase 7 delivery log — 17 Oct 2026
+
+The plan above assumed the extension needed a *shared store*. It does not, and should not: two
+processes writing one SQLite file is how a library gets corrupted. The extension writes bytes into a
+shared folder and the app — still the only writer — drains it. That also means the whole app half is
+buildable, testable and useful **without any capability**, and the one step that does need the
+portal is isolated.
+
+| Piece | What changed |
+|---|---|
+| Contract | New `SharedInbox`: `Pending/<id>/manifest.json` plus the shared files, written to a staging folder and moved into place so an entry can never be read half-written. A payload the app cannot read is **moved to `Failed/`, never deleted** — a receipt the user chose to share must not vanish. `SharedInbox.default` resolves the `OwnwiseAppGroupID` Info.plist key; with no key or no granted capability there is no container and every operation is a no-op, so today's behaviour is unchanged (the same gate as F3). |
+| Importer | New `InboxImporter`, run from `RootView` on launch and on foreground: images and PDFs (first three pages, rasterised) go through the **same** `ScanPipeline` the camera uses — OCR, parse, Apple Intelligence — and text is parsed directly; items are written by the **same** `ReviewModel.save` mapping, so an imported receipt lands with the fields a scan of it would. The link and any text are kept in the item's notes, so a share is never reduced to whatever the parser recognised. |
+| Plumbing | `ScanPipeline.draft(fromText:)` is the parse-and-fill half, now shared by the camera path and imports instead of being duplicated. `ReviewModel` gained `notes` (not shown on the review screen; the importer's channel for provenance) and writes it through. |
+| Gating | The **free item limit is asked here too** (`canAddItem`), or the share sheet would be a way around it. Entries over the limit stay in `Pending` and import after an upgrade or a deletion — queued, not dropped, and not quarantined. |
+| Extension | `Extensions/ShareExtension/ShareViewController.swift` is committed, complete, and deliberately in **no target**: an extension needs its own bundle id, provisioning and App Group. It reads item providers (text and links onto the entry, images and files as payload files, one representation per provider so Safari's page does not become a screenshot) and calls `enqueue`. |
+| Runbook | New `docs/share-extension.md`: the portal steps, the entitlement (shared with the iCloud one if both are on — two `CODE_SIGN_ENTITLEMENTS` would silently replace each other), the target settings, the activation rule, and how to inspect `Pending`/`Failed` from the command line. |
+
+Tests: `SharedInboxTests` (round-trip with files, the inert no-container case, quarantine keeping
+the bytes, an unreadable manifest) and `InboxImporterTests` (text → exact fields, image and PDF →
+an item whose receipt is kept, an unsupported file quarantined rather than deleted, and the free
+limit leaving the rest queued).
+
+**Residual for the owner:** the capability and the target (steps 1–4 of the runbook) can only be
+done with the App ID in hand. Until then the feature is invisible, verified by `SharedInbox(root:)`
+being `nil` in the shipping configuration.
+
 ## Phase 8 — Surfaces
 
 E2 widgets (`WidgetKit`, new extension target), E3 App Intents + `AppShortcutsProvider` (app
@@ -228,7 +254,7 @@ F1 iPad/Mac, F2 de/fr/es/ja/pt-BR.
 | 4 — Scan quality (+ barcode, promoted) | **done — awaiting the owner's build** |
 | 5 — Structure & performance | **done — awaiting the owner's build** |
 | 6 — Test integrity | **done — awaiting the owner's build** |
-| 7 — Share Sheet import (`E1`) | not started |
+| 7 — Share Sheet import (`E1`) | **done in code; the extension target + App Group are the owner's step** |
 | 8 — Widgets + App Intents (`E2`, `E3`, `B4`) | not started |
 | 9 — Value features (`E6`–`E11`) | not started |
 | 10 — Reach (`F1` iPad-compatible, `F2`) | not started |
@@ -279,14 +305,14 @@ Closed: **A4, A5, C3, D1, D2, D3, D4**, the user-facing half of **A1**, and **F3
 
 **F3 needs one capability step before it does anything**: enable iCloud/CloudKit on the App ID,
 create the `iCloud.com.ownwise.Ownwise` container, add the entitlements file and the Info.plist
-key. `Docs/iCloud-sync.md` has the exact contents. Until then the app is local-only, which is
+key. `docs/iCloud-sync.md` has the exact contents. Until then the app is local-only, which is
 also the state the privacy label describes.
 
 Files: `Services/{BackupService,SyncSettings}.swift` (new), `Services/ExportService.swift`,
 `Data/Persistence.swift`, `Features/Settings/{ExportView,SettingsView}.swift`,
 `Features/Export/ClaimPackView.swift` (new), `Features/Items/{CoverageEditor,ItemDetailView}.swift`,
 `Features/Paywall/PaywallView.swift`, `DesignSystem/Components/ClaimPackWatermark.swift` (new),
-`Support/AXID.swift`, `metadata/version/1.0/en-US.json`, `Docs/iCloud-sync.md` (new),
+`Support/AXID.swift`, `metadata/version/1.0/en-US.json`, `docs/iCloud-sync.md` (new),
 3 test files + `OwnwiseUITests/GatingUITests.swift` (new).
 
 

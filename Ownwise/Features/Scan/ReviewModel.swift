@@ -22,6 +22,9 @@ final class ReviewModel {
     var warrantyLeads: [Int]?
     var orderNumber: String = ""
     var taxID: String = ""
+    /// Not shown on the review screen: where a shared-in item came from (E1), so nothing a user
+    /// shared is thrown away.
+    var notes: String = ""
     var fieldsFromAI: Set<ExtractionDraft.Field> = []
     var ocrText: String = ""
     var pageImages: [Data] = []
@@ -70,6 +73,7 @@ final class ReviewModel {
         }
         item.orderNumber = orderNumber
         item.taxID = taxID
+        item.notes = notes
         // Coverage construction lives in one place (H4).
         var coverages: [Coverage] = []
         if let r = Int(returnDaysText), r > 0 {

@@ -19,7 +19,17 @@ struct ScanPipeline: Sendable {
             (try? await self.ocr.recognize(img).text) ?? ""
         }
         let joined = texts.joined(separator: "\n")
-        let parsed = parser.parse(joined)
+        var draft = await draft(fromText: joined)
+        // Compressing the pages is part of the heavy work, so it belongs off the main actor too.
+        draft.pageImages = images.compactMap { $0.jpegData(compressionQuality: 0.7) }
+        return draft
+    }
+
+    /// The parse-and-fill half of the pipeline, for text that is already in hand: OCR output from a
+    /// scan, or the text a share extension handed over (E1). Kept in one place so both paths read a
+    /// receipt the same way.
+    nonisolated func draft(fromText text: String) async -> ExtractionDraft {
+        let parsed = parser.parse(text)
         var draft = ExtractionDraft(
             merchant: parsed.merchant ?? "",
             brand: "",
@@ -32,15 +42,13 @@ struct ScanPipeline: Sendable {
             warrantyMonths: parsed.warrantyMonths,
             returnDays: parsed.returnDays,
             orderNumber: parsed.orderNumber ?? "",
-            ocrText: joined
+            ocrText: text
         )
         draft.name = parsed.productName ?? ""
         // The parser already reads a VAT/GST number; carry it through instead of dropping it (H5).
         draft.taxID = parsed.taxID ?? ""
-        // Compressing the pages is part of the heavy work, so it belongs off the main actor too.
-        draft.pageImages = images.compactMap { $0.jpegData(compressionQuality: 0.7) }
 
-        if let aiFields = await ai.extractWithTimeout(joined) {
+        if let aiFields = await ai.extractWithTimeout(text) {
             merge(into: &draft, ai: aiFields)
         }
         return draft
